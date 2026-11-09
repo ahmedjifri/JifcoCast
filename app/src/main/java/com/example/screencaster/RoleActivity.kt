@@ -34,6 +34,13 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.screencaster.shared.Protocol
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 
 /** شاشة البداية: الدور (مرسل/مستقبل) والاستعلامان (هذا الجهاز/أجهزة الشبكة). تُسأل في كل مرة. */
 class RoleActivity : ComponentActivity() {
@@ -43,6 +50,7 @@ class RoleActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    UpdateDialogs(autoCheck = true)
                     RoleScreen(
                         onSender = { startActivity(Intent(this, MainActivity::class.java)) },
                         onReceiver = { startActivity(Intent(this, ReceiverActivity::class.java)) },
@@ -90,6 +98,8 @@ fun RoleScreen(
     onNetworkReport: () -> Unit,
     onExit: () -> Unit
 ) {
+    var manualCheck by androidx.compose.runtime.remember { mutableStateOf(false) }
+    if (manualCheck) UpdateDialogs(autoCheck = false, onDone = { manualCheck = false })
     FramedScreen(title = "", onHome = null) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(10.dp),
@@ -114,8 +124,123 @@ fun RoleScreen(
         TvButton("أجهزة الشبكة — ما يمكن البث إليه وكيف", outlined = true, fontSize = 15.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(64.dp), onClick = onNetworkReport)
 
         Spacer(Modifier.height(24.dp))
+        TvButton("التحقق من التحديثات", outlined = true, fontSize = 15.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(52.dp), onClick = { manualCheck = true })
+        Spacer(Modifier.height(10.dp))
         TvButton("خروج من البرنامج", outlined = true, fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(52.dp), onClick = onExit)
         Spacer(Modifier.height(8.dp))
     }
+    }
+}
+
+
+/**
+ * مربعات التحديث: فحص (تلقائي عند التشغيل أو يدوي) ← «تحديث متاح» مع تحديث الآن/لاحقاً ← تنزيل بشريط تقدّم ← مثبّت النظام.
+ * في الفحص التلقائي لا تظهر أي رسالة إن لم يوجد جديد أو تعذّر الاتصال.
+ */
+@Composable
+fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
+    val ctx = LocalContext.current
+    var state by androidx.compose.runtime.remember { mutableStateOf("checking") } // checking | none | error | offer | downloading | failed | done
+    var release by androidx.compose.runtime.remember { mutableStateOf<Updater.Release?>(null) }
+    var progress by androidx.compose.runtime.remember { mutableStateOf(0) }
+    var error by androidx.compose.runtime.remember { mutableStateOf("") }
+    var needPermission by androidx.compose.runtime.remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        Thread {
+            val rel = Updater.fetchLatest()
+            val newer = rel != null && Updater.isNewer(rel.version, Protocol.VERSION)
+            val snoozed = rel != null && autoCheck && Updater.isSnoozed(ctx, rel.version)
+            release = rel
+            state = when {
+                rel == null -> "error"
+                newer && !snoozed -> "offer"
+                else -> "none"
+            }
+        }.start()
+    }
+
+    fun startDownload() {
+        val rel = release ?: return
+        if (!Updater.canInstall(ctx)) { needPermission = true; return }
+        state = "downloading"; progress = 0
+        Thread {
+            try {
+                val f = Updater.download(ctx, rel) { p -> progress = p }
+                state = "done"
+                Updater.install(ctx, f)
+            } catch (e: Exception) {
+                error = e.message ?: e.javaClass.simpleName
+                state = "failed"
+            }
+        }.start()
+    }
+
+    when {
+        needPermission -> AlertDialog(
+            onDismissRequest = { needPermission = false },
+            title = { Text("إذن التثبيت") },
+            text = { Text("يحتاج النظام موافقتك مرة واحدة على السماح لـ Jifco Cast بتثبيت التحديثات. افتح الإعداد، فعّل «السماح من هذا المصدر»، ثم ارجع واضغط «تحديث الآن».") },
+            confirmButton = { Button(onClick = { needPermission = false; Updater.openInstallPermission(ctx) }) { Text("فتح الإعداد") } },
+            dismissButton = { TextButton(onClick = { needPermission = false }) { Text("إلغاء") } }
+        )
+        state == "offer" -> AlertDialog(
+            onDismissRequest = { },
+            title = { Text("تحديث متاح: ${release?.version}") },
+            text = {
+                Column {
+                    Text("النسخة الحالية ${Protocol.VERSION}. التحديث يحمّل ملف التثبيت (نحو ٨ ميجابايت) ثم يفتح مثبّت النظام.", fontSize = 13.sp)
+                    val notes = release?.notes?.trim().orEmpty()
+                    if (notes.isNotBlank()) { Spacer(Modifier.height(6.dp)); Text(notes.take(400), fontSize = 12.sp) }
+                }
+            },
+            confirmButton = { Button(onClick = { startDownload() }) { Text("تحديث الآن") } },
+            dismissButton = { TextButton(onClick = { release?.let { Updater.snooze(ctx, it.version) }; state = "none"; onDone() }) { Text("لاحقاً") } }
+        )
+        state == "downloading" -> AlertDialog(
+            onDismissRequest = { },
+            title = { Text("جارٍ تنزيل التحديث…") },
+            text = {
+                Column {
+                    if (progress >= 0) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
+                    else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(6.dp))
+                    Text(if (progress >= 0) "$progress٪" else "…", fontSize = 13.sp)
+                }
+            },
+            confirmButton = { }
+        )
+        state == "failed" -> AlertDialog(
+            onDismissRequest = { state = "none"; onDone() },
+            title = { Text("تعذر التحديث") },
+            text = { Text(error) },
+            confirmButton = { Button(onClick = { startDownload() }) { Text("إعادة المحاولة") } },
+            dismissButton = { TextButton(onClick = { state = "none"; onDone() }) { Text("إغلاق") } }
+        )
+        state == "done" -> AlertDialog(
+            onDismissRequest = { state = "none"; onDone() },
+            title = { Text("اكتمل التنزيل") },
+            text = { Text("اتبع مثبّت النظام لإتمام التحديث. إن لم يظهر، اضغط «تثبيت».") },
+            confirmButton = { Button(onClick = { release?.let { r -> java.io.File(ctx.cacheDir, "updates/JifcoCast-${r.version}.apk").takeIf { it.exists() }?.let { Updater.install(ctx, it) } } }) { Text("تثبيت") } },
+            dismissButton = { TextButton(onClick = { state = "none"; onDone() }) { Text("إغلاق") } }
+        )
+        !autoCheck && state == "none" -> AlertDialog(
+            onDismissRequest = { onDone() },
+            title = { Text("لا يوجد تحديث") },
+            text = { Text("أنت على آخر نسخة (${Protocol.VERSION}).") },
+            confirmButton = { Button(onClick = { onDone() }) { Text("حسناً") } }
+        )
+        !autoCheck && state == "error" -> AlertDialog(
+            onDismissRequest = { onDone() },
+            title = { Text("تعذر الفحص") },
+            text = { Text("لم أستطع الوصول إلى جيت هب. تأكد من الإنترنت وحاول مجدداً.") },
+            confirmButton = { Button(onClick = { onDone() }) { Text("حسناً") } }
+        )
+        !autoCheck && state == "checking" -> AlertDialog(
+            onDismissRequest = { },
+            title = { Text("جارٍ الفحص…") },
+            text = { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) },
+            confirmButton = { }
+        )
     }
 }

@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- مطلوب لالتقاط صوت التشغيل (لا نلتقط الميكروفون) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- التحديث داخل التطبيق: تثبيت ملف التثبيت المحمّل -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation"
@@ -105,6 +107,15 @@
             android:name=".CastService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
