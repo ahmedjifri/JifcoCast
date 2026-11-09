@@ -86,7 +86,7 @@ object Capabilities {
         return DeviceInfo(
             name = "${Build.MANUFACTURER} ${Build.MODEL}",
             model = Build.MODEL,
-            role = "sender",
+            role = "probe",   // فحص فقط — لا يحتاج كلمة سر
             version = Protocol.VERSION,
             width = dm.widthPixels,
             height = dm.heightPixels

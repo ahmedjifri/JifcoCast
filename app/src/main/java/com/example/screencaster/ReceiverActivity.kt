@@ -38,6 +38,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
     private var videoH = 0
     private var streaming = false
     private lateinit var backButton: Button
+    private lateinit var pinButton: Button
     private lateinit var idleBg: View
     private lateinit var modeText: TextView
 
@@ -101,6 +102,22 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         }
         root.addView(backButton, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END).apply { setMargins(60, 60, 60, 60) })
 
+        pinButton = Button(this).apply {
+            text = "تغيير كلمة السر"
+            setOnClickListener { showChangePinDialog() }
+            isFocusable = true
+            isFocusableInTouchMode = false
+            val normal = android.graphics.drawable.GradientDrawable().apply { setColor(0xFFE0E0E0.toInt()); cornerRadius = 24f }
+            val focusedBg = android.graphics.drawable.GradientDrawable().apply { setColor(0xFFE0E0E0.toInt()); cornerRadius = 24f; setStroke(10, 0xFFFFD600.toInt()) }
+            background = android.graphics.drawable.StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_focused), focusedBg)
+                addState(intArrayOf(), normal)
+            }
+            setTextColor(Color.BLACK)
+            setPadding(40, 20, 40, 20)
+        }
+        root.addView(pinButton, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START).apply { setMargins(60, 60, 60, 60) })
+
         setContentView(root)
         textureView.surfaceTextureListener = this
         showIdle()
@@ -111,12 +128,14 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         statusText.text = "Jifco Cast - Receiver\nReady to Receive\n\n" +
             "الجهاز: ${Build.MANUFACTURER} ${Build.MODEL}\n" +
             "العنوان: ${NetUtils.localIpv4() ?: "غير معروف"} : $port\n\n" +
-            "افتح «Jifco Cast - Sender» على الجوال أو الحاسب واضغط «ابحث عن المستقبلات»\n\n" +
+            "افتح «Jifco Cast - Sender» على الجوال أو الحاسب واضغط «ابحث عن المستقبلات»\n" +
+            "محمي بكلمة سر" + (if (PinStore.receiverPin(this) == Protocol.DEFAULT_PIN) " (الافتراضية 1234 — غيّرها من الزر أعلى اليسار)" else "") + "\n\n" +
             "النسخة ${Protocol.VERSION}\n\nأثناء البث: أزرار ◀ ▶ في الريموت تبدّل وضع العرض (ملاءمة / ملء / تمديد)"
         idleBg.visibility = View.VISIBLE
         statusText.visibility = View.VISIBLE
         logText.visibility = View.VISIBLE
         backButton.visibility = View.VISIBLE
+        pinButton.visibility = View.VISIBLE
         streaming = false
         // إخفاء طبقة الفيديو وإجبار الشاشة على إعادة الرسم فوراً (بعض الأجهزة لا تعيد الرسم إلا بحدث)
         textureView.alpha = 0f
@@ -124,9 +143,39 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         statusText.bringToFront()
         logText.bringToFront()
         backButton.bringToFront()
+        pinButton.bringToFront()
         statusText.invalidate()
         window.decorView.postInvalidate()
         main.postDelayed({ statusText.invalidate(); window.decorView.postInvalidate() }, 300)
+    }
+
+    /** تغيير كلمة السر: القديمة ثم الجديدة مرتين (أرقام فقط، ٤ خانات فأكثر). */
+    private fun showChangePinDialog() {
+        val wrap = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.VERTICAL; setPadding(48, 24, 48, 0) }
+        fun field(hint: String) = android.widget.EditText(this).apply {
+            this.hint = hint
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            wrap.addView(this)
+        }
+        val old = field("كلمة السر الحالية")
+        val new1 = field("الكلمة الجديدة (أرقام، ٤ فأكثر)")
+        val new2 = field("أعد الكلمة الجديدة")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("تغيير كلمة السر")
+            .setView(wrap)
+            .setPositiveButton("حفظ") { _, _ ->
+                val o = old.text.toString(); val a = new1.text.toString(); val b = new2.text.toString()
+                val msg = when {
+                    o != PinStore.receiverPin(this) -> "كلمة السر الحالية غير صحيحة"
+                    a.length < 4 || !a.all { it.isDigit() } -> "الكلمة الجديدة يجب أن تكون أرقاماً، ٤ خانات فأكثر"
+                    a != b -> "الكلمتان الجديدتان غير متطابقتين"
+                    else -> { PinStore.setReceiverPin(this, a); "تم تغيير كلمة السر" }
+                }
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+                if (!streaming) showIdle()
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
     private fun modeLabel(m: String) = when (m) { "fill" -> "ملء الشاشة (قصّ الأطراف)"; "stretch" -> "تمديد"; else -> "ملاءمة" }
@@ -188,6 +237,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         if (server != null) return
         val dm = resources.displayMetrics
         val s = ReceiverServer(
+            pinProvider = { PinStore.receiverPin(this) },
             surfaceProvider = { if (surfaceReady) surface else null },
             screenWidth = dm.widthPixels,
             screenHeight = dm.heightPixels,
@@ -206,6 +256,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
                         statusText.visibility = View.GONE
                         logText.visibility = View.GONE
                         backButton.visibility = View.GONE
+                        pinButton.visibility = View.GONE
                         fitSurface(peer.width, peer.height)
                     }
                     log("بدأ البث من ${peer.name}")

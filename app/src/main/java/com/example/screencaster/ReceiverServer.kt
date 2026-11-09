@@ -20,6 +20,7 @@ import java.net.Socket
  * ويمرّرها إلى فاكّ الفيديو. مرسل واحد في كل مرة.
  */
 class ReceiverServer(
+    private val pinProvider: () -> String,
     private val surfaceProvider: () -> Surface?,
     private val screenWidth: Int,
     private val screenHeight: Int,
@@ -97,6 +98,13 @@ class ReceiverServer(
             val hello = inp.readMessage()
             if (hello.type != Protocol.MSG_HELLO) return
             var peer = DeviceInfo.fromJson(String(hello.payload, Charsets.UTF_8))
+            // التحقق من كلمة السر: الفحص (probe) مسموح بلا كلمة، والبث يحتاجها
+            if (peer.role != "probe" && peer.pin != pinProvider()) {
+                out.writeMessage(Message(Protocol.MSG_AUTH_FAIL, "كلمة السر غير صحيحة".toByteArray(Charsets.UTF_8)))
+                listener.onStatus("رُفض ${peer.name}: كلمة السر غير صحيحة")
+                Thread.sleep(300)
+                return
+            }
             var lastConfig: ByteArray? = null
             listener.onConnected(peer)
             listener.onStatus("متصل بـ ${peer.name}\nينتظر بدء البث…")

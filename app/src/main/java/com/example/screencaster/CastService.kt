@@ -52,6 +52,7 @@ class CastService : Service() {
         const val EXTRA_SCREEN_W = "screenW"
         const val EXTRA_SCREEN_H = "screenH"
         const val EXTRA_DPI = "dpi"
+        const val EXTRA_PIN = "pin"
 
         private const val CHANNEL_ID = "cast"
         private const val NOTIF_ID = 1001
@@ -60,7 +61,7 @@ class CastService : Service() {
         const val FPS = 30
         const val IFRAME_SEC = 2
 
-        fun start(ctx: Context, resultCode: Int, data: Intent, host: String, port: Int, name: String, screenW: Int, screenH: Int, dpi: Int) {
+        fun start(ctx: Context, resultCode: Int, data: Intent, host: String, port: Int, name: String, screenW: Int, screenH: Int, dpi: Int, pin: String) {
             val i = Intent(ctx, CastService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_RESULT_CODE, resultCode)
@@ -71,6 +72,7 @@ class CastService : Service() {
                 putExtra(EXTRA_SCREEN_W, screenW)
                 putExtra(EXTRA_SCREEN_H, screenH)
                 putExtra(EXTRA_DPI, dpi)
+                putExtra(EXTRA_PIN, pin)
             }
             if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
         }
@@ -128,6 +130,7 @@ class CastService : Service() {
         val screenW = intent.getIntExtra(EXTRA_SCREEN_W, 1080)
         val screenH = intent.getIntExtra(EXTRA_SCREEN_H, 1920)
         val dpi = intent.getIntExtra(EXTRA_DPI, 320)
+        val pin = intent.getStringExtra(EXTRA_PIN) ?: ""
         if (data == null || host.isEmpty()) {
             stopSelf(); return
         }
@@ -148,10 +151,13 @@ class CastService : Service() {
             CastState.status = "جارٍ الاتصال بـ $name…"
         }
 
-        worker = Thread({ run(resultCode, data, host, port, name, screenW, screenH, dpi) }, "cast-worker").also { it.start() }
+        worker = Thread({ run(resultCode, data, host, port, name, screenW, screenH, dpi, pin) }, "cast-worker").also { it.start() }
     }
 
-    private fun run(resultCode: Int, data: Intent, host: String, port: Int, name: String, screenW: Int, screenH: Int, dpi: Int) {
+    /** يُرفع عند رفض كلمة السر كي لا تُعاد الدقة ولا يُنسى سبب التوقف. */
+    private class AuthException(msg: String) : Exception(msg)
+
+    private fun run(resultCode: Int, data: Intent, host: String, port: Int, name: String, screenW: Int, screenH: Int, dpi: Int, pin: String) {
         var out: DataOutputStream? = null
         this.dpi = dpi
         val q = Qualities.current(this)
@@ -170,10 +176,15 @@ class CastService : Service() {
             out = DataOutputStream(BufferedOutputStream(s.getOutputStream(), 1 shl 16))
             this.out = out
             val inp = DataInputStream(BufferedInputStream(s.getInputStream()))
-            val me = DeviceInfo("${Build.MANUFACTURER} ${Build.MODEL}", Build.MODEL, "sender", Protocol.VERSION, w, h)
+            val me = DeviceInfo("${Build.MANUFACTURER} ${Build.MODEL}", Build.MODEL, "sender", Protocol.VERSION, w, h, pin)
             out.writeMessage(Message(Protocol.MSG_HELLO, me.toJson().toByteArray(Charsets.UTF_8)))
             val ack = inp.readMessage()
+            if (ack.type == Protocol.MSG_AUTH_FAIL) {
+                PinStore.forgetPin(this, host)   // تُطلب من جديد في المرة القادمة
+                throw AuthException("كلمة السر غير صحيحة — اضغط «عكس الشاشة» وأدخلها من جديد")
+            }
             if (ack.type != Protocol.MSG_HELLO_ACK) throw IllegalStateException("ردّ غير متوقع من المستقبل")
+            PinStore.savePin(this, host, pin)
             val peer = DeviceInfo.fromJson(String(ack.payload, Charsets.UTF_8))
             s.soTimeout = 0
 
@@ -283,6 +294,8 @@ class CastService : Service() {
                 }
             }
             try { out.writeMessage(Message(Protocol.MSG_BYE, ByteArray(0))) } catch (_: Exception) {}
+        } catch (e: AuthException) {
+            if (running) stopCasting(e.message ?: "كلمة السر غير صحيحة")
         } catch (e: Exception) {
             if (running) {
                 var reason = "انقطع البث: ${e.message ?: e.javaClass.simpleName}"

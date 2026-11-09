@@ -19,7 +19,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -68,13 +74,16 @@ fun SenderScreen() {
     var status by remember { mutableStateOf("اضغط «ابحث عن المستقبلات» — يظهر هنا كل جهاز مفتوح عليه «Jifco Cast - Receiver»") }
     var pendingTarget by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var qualityIndex by remember { mutableStateOf(Qualities.index(ctx)) }
+    var pinDialogFor by remember { mutableStateOf<DiscoveredDevice?>(null) }
+    var pinInput by remember { mutableStateOf("") }
 
     val projectionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val data = result.data
         val target = pendingTarget
         if (result.resultCode == Activity.RESULT_OK && data != null && target != null) {
             val dm = ctx.resources.displayMetrics
-            CastService.start(ctx, result.resultCode, data, target.host, target.port, target.name, dm.widthPixels, dm.heightPixels, dm.densityDpi)
+            val pin = PinStore.savedPin(ctx, target.host) ?: ""
+            CastService.start(ctx, result.resultCode, data, target.host, target.port, target.name, dm.widthPixels, dm.heightPixels, dm.densityDpi, pin)
         } else {
             CastState.status = "لم تُمنح الموافقة على التقاط الشاشة"
         }
@@ -98,12 +107,45 @@ fun SenderScreen() {
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { askAudioThenProject() }
 
     /** الترتيب: إذن الإشعارات (أندرويد ١٣+) ← إذن الصوت (أندرويد ١٠+) ← حوار التقاط الشاشة. كل إذن يُطلب مرة واحدة. */
-    fun startCast(dev: DiscoveredDevice) {
+    fun startPermissions(dev: DiscoveredDevice) {
         pendingTarget = dev
         if (Build.VERSION.SDK_INT >= 33 &&
             ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         else askAudioThenProject()
+    }
+
+    /** كلمة سر المستقبل: محفوظة لكل عنوان؛ إن لم تكن محفوظة (أو رُفضت) تُطلب في مربع حوار. */
+    fun startCast(dev: DiscoveredDevice) {
+        if (PinStore.savedPin(ctx, dev.host) != null) startPermissions(dev)
+        else { pinInput = ""; pinDialogFor = dev }
+    }
+
+    pinDialogFor?.let { dev ->
+        AlertDialog(
+            onDismissRequest = { pinDialogFor = null },
+            title = { Text("كلمة سر المستقبل") },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    Text("أدخل كلمة سر المستقبل «${dev.name}» (الافتراضية 1234، تُغيَّر من شاشة المستقبل). تُحفظ بعد أول اتصال ناجح.", fontSize = 13.sp)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pinInput, onValueChange = { pinInput = it.filter { c -> c.isDigit() } },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(enabled = pinInput.length >= 4, onClick = {
+                    PinStore.savePin(ctx, dev.host, pinInput)
+                    pinDialogFor = null
+                    startPermissions(dev)
+                }) { Text("اتصال") }
+            },
+            dismissButton = { TextButton(onClick = { pinDialogFor = null }) { Text("إلغاء") } }
+        )
     }
 
     fun scan() {

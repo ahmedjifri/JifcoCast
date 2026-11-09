@@ -3,10 +3,11 @@
 Jifco Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 APP_NAME = "Jifco Cast"
 
 import json
+import os
 import socket
 import struct
 import threading
@@ -24,6 +25,25 @@ SERVICE_TYPE = "_screencaster._tcp.local."
 DEFAULT_PORT = 47337
 MSG_HELLO, MSG_HELLO_ACK, MSG_CONFIG, MSG_FRAME, MSG_PING, MSG_PONG, MSG_BYE, MSG_RESIZE, MSG_MODE = 1, 2, 3, 4, 5, 6, 7, 8, 9
 MSG_AUDIO_CONFIG, MSG_AUDIO = 10, 11
+MSG_AUTH_FAIL = 12
+DEFAULT_PIN = "1234"
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.json")
+
+
+def load_settings():
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_settings(d):
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False, indent=1)
+    except Exception:
+        pass
 FLAG_KEYFRAME = 1
 HEADER = struct.Struct(">iBiqi")  # magic, type, flags, pts, len
 
@@ -179,11 +199,13 @@ def draw_cursor(arr, mon, bitmaps):
 
 
 class Sender(threading.Thread):
-    def __init__(self, host, port, monitor_index, ui, long_side, bitrate, show_cursor=True):
+    def __init__(self, host, port, monitor_index, ui, long_side, bitrate, show_cursor=True, pin=DEFAULT_PIN):
         super().__init__(daemon=True)
         self.host, self.port, self.monitor_index, self.ui = host, port, monitor_index, ui
         self.long_side, self.bitrate = long_side, bitrate
         self.show_cursor = show_cursor
+        self.pin = pin
+        self.auth_failed = False
         self.running = True
         self.conn = None
         self.mode_queue = queue.Queue()
@@ -213,11 +235,15 @@ class Sender(threading.Thread):
                 self.ui.status(f"جارٍ الاتصال بـ {self.host}…")
                 self.conn = Conn(self.host, self.port)
                 hello = {"name": f"{APP_NAME} PC — {platform.node()}", "model": "Windows", "role": "sender",
-                         "version": VERSION, "width": w, "height": h}
+                         "version": VERSION, "width": w, "height": h, "pin": self.pin}
                 self.conn.send(MSG_HELLO, json.dumps(hello, ensure_ascii=False).encode("utf-8"))
                 mtype, payload, _, _ = self.conn.recv()
+                if mtype == MSG_AUTH_FAIL:
+                    self.auth_failed = True
+                    raise IOError("كلمة السر غير صحيحة — صحّحها في خانة «كلمة السر» وأعد المحاولة")
                 if mtype != MSG_HELLO_ACK:
                     raise IOError("ردّ غير متوقع من المستقبل")
+                self.ui.pin_ok(self.host, self.pin)
                 peer = json.loads(payload.decode("utf-8"))
                 self.conn.sock.settimeout(None)
                 self.ui.status(f"يبثّ إلى {peer.get('name', self.host)} — {w}×{h} — {self.bitrate//1_000_000} ميجابت/ث")
@@ -421,6 +447,11 @@ class App:
         self.cursor_var = tk.BooleanVar(value=True)
         st.configure("Card.TCheckbutton", background=FRAME_BG)
         ttk.Checkbutton(row2b, text="إظهار مؤشر الماوس في البث", variable=self.cursor_var, style="Card.TCheckbutton").pack(side="right")
+        ttk.Label(row2b, text="كلمة سر المستقبل:", style="Card.TLabel").pack(side="right", padx=(16, 4))
+        self.pin_var = tk.StringVar(value=DEFAULT_PIN)
+        ttk.Entry(row2b, textvariable=self.pin_var, width=10, show="•", justify="center").pack(side="right")
+        self.settings = load_settings()
+        self.listbox.bind("<<ListboxSelect>>", self.on_select_receiver)
 
         row3 = ttk.Frame(f, style="Card.TFrame"); row3.pack(fill="x", pady=8)
         self.cast_btn = ttk.Button(row3, text="عكس الشاشة", command=self.cast)
@@ -455,6 +486,18 @@ class App:
             if not on:
                 self.stats_var.set("")
         self.root.after(0, apply)
+
+    def pin_ok(self, host, pin):
+        """تُحفظ كلمة السر الصحيحة لكل مستقبل."""
+        self.settings.setdefault("pins", {})[host] = pin
+        save_settings(self.settings)
+
+    def on_select_receiver(self, _=None):
+        sel = self.listbox.curselection()
+        if not sel:
+            return
+        _, host, _ = list(self.receivers.values())[sel[0]]
+        self.pin_var.set(self.settings.get("pins", {}).get(host, DEFAULT_PIN))
 
     def fill_monitors(self):
         try:
@@ -515,7 +558,7 @@ class App:
         mon = (self.monitor_box.current() or 0) + 1
         self.cast_btn.config(state="disabled", text="جارٍ الاتصال…")
         _, long_side, bitrate = QUALITIES[self.quality_box.current() or 0]
-        self.sender = Sender(host, port, mon, self, long_side, bitrate, self.cursor_var.get())
+        self.sender = Sender(host, port, mon, self, long_side, bitrate, self.cursor_var.get(), self.pin_var.get().strip() or DEFAULT_PIN)
         self.sender.start()
 
     def stop(self):

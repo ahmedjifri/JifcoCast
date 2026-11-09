@@ -10,7 +10,7 @@ import java.io.IOException
  * رسالة واحدة على الشبكة = [magic:int][type:byte][flags:int][pts:long][len:int][payload:len bytes]
  */
 object Protocol {
-    const val VERSION = "0.6.4"
+    const val VERSION = "0.7.0"
 
     /** نوع الخدمة الذي يعلن به المستقبل عن نفسه على الشبكة (إم دي إن إس). */
     const val SERVICE_TYPE = "_screencaster._tcp."
@@ -31,6 +31,10 @@ object Protocol {
     const val MSG_MODE: Byte = 9       // المرسل → المستقبل: وضع العرض ("fit" | "fill" | "stretch")
     const val MSG_AUDIO_CONFIG: Byte = 10 // المرسل → المستقبل: إعداد الصوت (json: sampleRate, channels)
     const val MSG_AUDIO: Byte = 11     // المرسل → المستقبل: قطعة صوت خام بي سي إم ١٦ بت
+    const val MSG_AUTH_FAIL: Byte = 12 // المستقبل → المرسل: كلمة السر غير صحيحة (ثم يُغلق الاتصال)
+
+    /** كلمة السر الافتراضية للمستقبل. */
+    const val DEFAULT_PIN = "1234"
 
     /** إعدادات الصوت الافتراضية: ٤٨ كيلوهرتز، ستيريو، ١٦ بت. */
     const val AUDIO_SAMPLE_RATE = 48000
@@ -80,7 +84,8 @@ class DeviceInfo(
     val role: String,       // "sender" أو "receiver"
     val version: String,
     val width: Int,
-    val height: Int
+    val height: Int,
+    val pin: String = ""   // كلمة سر المستقبل (يرسلها المرسل في التعريف فقط)
 ) {
     fun toJson(): String = JSONObject()
         .put("name", name)
@@ -89,6 +94,7 @@ class DeviceInfo(
         .put("version", version)
         .put("width", width)
         .put("height", height)
+        .put("pin", pin)
         .toString()
 
     companion object {
@@ -100,7 +106,8 @@ class DeviceInfo(
                 role = o.optString("role", ""),
                 version = o.optString("version", ""),
                 width = o.optInt("width", 0),
-                height = o.optInt("height", 0)
+                height = o.optInt("height", 0),
+                pin = o.optString("pin", "")
             )
         }
     }

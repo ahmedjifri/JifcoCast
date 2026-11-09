@@ -11,7 +11,7 @@ https://github.com/ahmedjifri/JifcoCast/releases/latest/download/JifcoCast.apk
 ## كروم كاست / شاومي تي في (أندرويد تي في)
 1. من متجر جوجل على الجهاز ثبّت تطبيق **Downloader** (AFTVnews).
 2. افتحه واكتب الرابط أعلاه → يحمّل ويطلب الإذن بالتثبيت → وافق.
-3. افتح Jifco Cast → **Receiver**.
+3. افتح Jifco Cast → **Receiver**. كلمة السر الافتراضية `1234` — غيّرها من زر «تغيير كلمة السر» في شاشة المستقبل.
 
 ## حاسب ويندوز
 نزّل المستودع (Code → Download ZIP) وشغّل `pc/install.bat` ثم `pc/run.bat`.

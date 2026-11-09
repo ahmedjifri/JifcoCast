@@ -19,3 +19,7 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+
+/pc/settings.json
+
+/pc/settings.json
