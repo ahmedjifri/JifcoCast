@@ -188,6 +188,21 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
     }
     private val hideHint = Runnable { modeText.visibility = View.GONE }
 
+    /** تأخير الصوت (مللي ثانية) — يُحفظ ويُطبّق على كل بث. */
+    private var audioDelay: Int
+        get() = getSharedPreferences("aakes", MODE_PRIVATE).getInt("audio_delay", 0)
+        set(v) = getSharedPreferences("aakes", MODE_PRIVATE).edit().putInt("audio_delay", v.coerceIn(0, 2000)).apply()
+
+    private fun changeAudioDelay(delta: Int, fromSender: Boolean = false, absolute: Int? = null) {
+        val v = (absolute ?: (audioDelay + delta)).coerceIn(0, 2000)
+        audioDelay = v
+        if (!fromSender) server?.applyAudioDelay(v)
+        modeText.text = "تأخير الصوت: $v مللي ثانية"
+        modeText.visibility = View.VISIBLE
+        main.removeCallbacks(hideHint)
+        main.postDelayed(hideHint, 2500)
+    }
+
     private fun cycleMode(forward: Boolean) {
         val order = listOf("fit", "fill", "stretch")
         val i = order.indexOf(mode).coerceAtLeast(0)
@@ -201,6 +216,8 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
             when (keyCode) {
                 android.view.KeyEvent.KEYCODE_DPAD_RIGHT, android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_MENU -> { cycleMode(true); return true }
                 android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_UP -> { cycleMode(false); return true }
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> { changeAudioDelay(+50); return true }
+                android.view.KeyEvent.KEYCODE_MEDIA_REWIND, android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> { changeAudioDelay(-50); return true }
             }
         }
         return super.onKeyDown(keyCode, event)
@@ -238,6 +255,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         val dm = resources.displayMetrics
         val s = ReceiverServer(
             pinProvider = { PinStore.receiverPin(this) },
+            audioDelayProvider = { audioDelay },
             surfaceProvider = { if (surfaceReady) surface else null },
             screenWidth = dm.widthPixels,
             screenHeight = dm.heightPixels,
@@ -268,7 +286,10 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
                     main.post { mode = m; fitSurface(videoW, videoH); showModeHint() }
                 }
                 override fun onAudio(ok: Boolean) {
-                    log(if (ok) "الصوت: يعمل" else "الصوت: تعذر تشغيله")
+                    log(if (ok) "الصوت: يعمل (تأخير $audioDelay مللي ثانية)" else "الصوت: تعذر تشغيله")
+                }
+                override fun onAudioDelay(ms: Int) {
+                    main.post { changeAudioDelay(0, fromSender = true, absolute = ms) }
                 }
                 override fun onIdle() {
                     main.post {

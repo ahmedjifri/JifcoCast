@@ -21,6 +21,7 @@ import java.net.Socket
  */
 class ReceiverServer(
     private val pinProvider: () -> String,
+    private val audioDelayProvider: () -> Int,
     private val surfaceProvider: () -> Surface?,
     private val screenWidth: Int,
     private val screenHeight: Int,
@@ -33,11 +34,16 @@ class ReceiverServer(
         fun onResize(width: Int, height: Int)
         fun onMode(mode: String)
         fun onAudio(ok: Boolean)
+        fun onAudioDelay(ms: Int)
         fun onIdle()
     }
 
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
+    private var currentAudio: () -> AudioPlayer? = { null }
+
+    /** تغيير التأخير من المستقبل نفسه (الريموت). */
+    fun applyAudioDelay(ms: Int) { currentAudio()?.setDelay(ms) }
     @Volatile private var current: Socket? = null
 
     var port: Int = 0
@@ -88,6 +94,7 @@ class ReceiverServer(
     private fun handle(client: Socket) {
         var decoder: VideoDecoder? = null
         var audio: AudioPlayer? = null
+        currentAudio = { audio }
         var frames = 0L
         try {
             client.tcpNoDelay = true
@@ -148,11 +155,16 @@ class ReceiverServer(
                         val o = org.json.JSONObject(String(m.payload, Charsets.UTF_8))
                         audio?.release()
                         audio = try {
-                            AudioPlayer(o.optInt("sampleRate", Protocol.AUDIO_SAMPLE_RATE), o.optInt("channels", Protocol.AUDIO_CHANNELS)).also { it.start() }
+                            AudioPlayer(o.optInt("sampleRate", Protocol.AUDIO_SAMPLE_RATE), o.optInt("channels", Protocol.AUDIO_CHANNELS)).also { it.start(audioDelayProvider()) }
                         } catch (_: Exception) { null }
                         listener.onAudio(audio != null)
                     }
                     Protocol.MSG_AUDIO -> audio?.feed(m.payload)
+                    Protocol.MSG_AUDIO_DELAY -> {
+                        val ms = String(m.payload, Charsets.UTF_8).trim().toIntOrNull() ?: 0
+                        listener.onAudioDelay(ms)
+                        audio?.setDelay(ms)
+                    }
                     Protocol.MSG_PING -> { /* نبضة حياة من المرسل — لا ردّ كي لا يمتلئ مخزن المرسل */ }
                     Protocol.MSG_BYE -> return
                     else -> { /* تجاهل */ }

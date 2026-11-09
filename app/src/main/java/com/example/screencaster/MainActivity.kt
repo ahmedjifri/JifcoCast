@@ -176,7 +176,7 @@ fun SenderScreen() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (CastState.active || CastState.connecting || CastState.status.isNotBlank()) {
-                item { CastStatusCard(onStop = { CastService.stop(ctx) }, onMode = { m -> CastService.setMode(ctx, m) }) }
+                item { CastStatusCard(onStop = { CastService.stop(ctx) }, onMode = { m -> CastService.setMode(ctx, m) }, onAudioDelay = { ms -> CastService.setAudioDelay(ctx, ms) }) }
             }
             item {
                 // بعد أي عطل تعود الخدمة إلى 720p — نعرض القيمة المحفوظة الحالية

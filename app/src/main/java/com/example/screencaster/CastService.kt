@@ -44,6 +44,8 @@ class CastService : Service() {
         const val ACTION_STOP = "com.example.screencaster.CAST_STOP"
         const val ACTION_MODE = "com.example.screencaster.CAST_MODE"
         const val EXTRA_MODE = "mode"
+        const val ACTION_AUDIO_DELAY = "com.example.screencaster.CAST_AUDIO_DELAY"
+        const val EXTRA_DELAY = "delay"
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_RESULT_DATA = "resultData"
         const val EXTRA_HOST = "host"
@@ -82,6 +84,9 @@ class CastService : Service() {
         }
 
         /** يرسل وضع العرض إلى المستقبل: fit / fill / stretch */
+        fun setAudioDelay(ctx: Context, ms: Int) {
+            ctx.startService(Intent(ctx, CastService::class.java).apply { action = ACTION_AUDIO_DELAY; putExtra(EXTRA_DELAY, ms) })
+        }
         fun setMode(ctx: Context, mode: String) {
             ctx.startService(Intent(ctx, CastService::class.java).apply { action = ACTION_MODE; putExtra(EXTRA_MODE, mode) })
         }
@@ -113,6 +118,12 @@ class CastService : Service() {
                 val mode = intent.getStringExtra(EXTRA_MODE) ?: "fit"
                 val o = out
                 if (running && o != null) Thread { try { o.writeMessage(Message(Protocol.MSG_MODE, mode.toByteArray(Charsets.UTF_8))) } catch (_: Exception) {} }.start()
+            }
+            ACTION_AUDIO_DELAY -> {
+                val ms = intent.getIntExtra(EXTRA_DELAY, 0)
+                CastState.audioDelay = ms
+                val o = out
+                if (running && o != null) Thread { try { o.writeMessage(Message(Protocol.MSG_AUDIO_DELAY, ms.toString().toByteArray(Charsets.UTF_8))) } catch (_: Exception) {} }.start()
             }
             else -> if (!running) stopSelf()
         }

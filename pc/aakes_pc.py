@@ -3,7 +3,7 @@
 Jifco Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 APP_NAME = "Jifco Cast"
 
 import json
@@ -26,6 +26,7 @@ DEFAULT_PORT = 47337
 MSG_HELLO, MSG_HELLO_ACK, MSG_CONFIG, MSG_FRAME, MSG_PING, MSG_PONG, MSG_BYE, MSG_RESIZE, MSG_MODE = 1, 2, 3, 4, 5, 6, 7, 8, 9
 MSG_AUDIO_CONFIG, MSG_AUDIO = 10, 11
 MSG_AUTH_FAIL = 12
+MSG_AUDIO_DELAY = 13
 DEFAULT_PIN = "1234"
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.json")
 
@@ -213,7 +214,10 @@ class Sender(threading.Thread):
         self.bytes_window = 0
 
     def set_mode(self, mode):
-        self.mode_queue.put(mode)
+        self.mode_queue.put(("mode", mode))
+
+    def set_audio_delay(self, ms):
+        self.mode_queue.put(("delay", str(int(ms))))
 
     def stop(self):
         self.running = False
@@ -277,8 +281,8 @@ class Sender(threading.Thread):
                     # وضع العرض
                     try:
                         while True:
-                            m = self.mode_queue.get_nowait()
-                            self.conn.send(MSG_MODE, m.encode("utf-8"))
+                            kind, val = self.mode_queue.get_nowait()
+                            self.conn.send(MSG_MODE if kind == "mode" else MSG_AUDIO_DELAY, val.encode("utf-8"))
                     except queue.Empty:
                         pass
 
@@ -465,6 +469,16 @@ class App:
             b.pack(side="right", padx=1)
             self.mode_btns.append(b)
 
+        row4 = ttk.Frame(f, style="Card.TFrame"); row4.pack(fill="x", pady=2)
+        self.delay_var = tk.IntVar(value=int(load_settings().get("audio_delay", 0)))
+        self.delay_label = ttk.Label(row4, text=f"تزامن الصوت — تأخير {self.delay_var.get()} مللي ثانية:", style="Card.TLabel")
+        self.delay_label.pack(side="right", padx=4)
+        self.delay_btns = []
+        for label, d in (("− ٥٠", -50), ("+ ٥٠", 50), ("صفر", None)):
+            b = ttk.Button(row4, text=label, command=lambda d=d: self.change_delay(d), state="disabled")
+            b.pack(side="right", padx=1)
+            self.delay_btns.append(b)
+
         self.status_var = tk.StringVar(value="اضغط «ابحث عن المستقبلات»")
         ttk.Label(f, textvariable=self.status_var, anchor="e", justify="right", wraplength=600, style="Card.TLabel").pack(fill="x", pady=(8, 2))
         self.stats_var = tk.StringVar(value="")
@@ -482,7 +496,9 @@ class App:
         def apply():
             self.cast_btn.config(state="disabled" if on else "normal", text="جارٍ العكس…" if on else "عكس الشاشة")
             self.stop_btn.config(state="normal" if on else "disabled")
-            for b in self.mode_btns: b.config(state="normal" if on else "disabled")
+            for b in self.mode_btns + self.delay_btns: b.config(state="normal" if on else "disabled")
+            if on and self.sender and self.delay_var.get():
+                self.sender.set_audio_delay(self.delay_var.get())   # إرسال التأخير المحفوظ عند بدء البث
             if not on:
                 self.stats_var.set("")
         self.root.after(0, apply)
@@ -569,6 +585,15 @@ class App:
     def set_mode(self, mode):
         if self.sender:
             self.sender.set_mode(mode)
+
+    def change_delay(self, d):
+        v = 0 if d is None else max(0, min(2000, self.delay_var.get() + d))
+        self.delay_var.set(v)
+        self.delay_label.config(text=f"تزامن الصوت — تأخير {v} مللي ثانية:")
+        self.settings["audio_delay"] = v
+        save_settings(self.settings)
+        if self.sender:
+            self.sender.set_audio_delay(v)
 
     def on_close(self):
         self.stop()

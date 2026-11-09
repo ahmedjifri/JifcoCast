@@ -10,7 +10,7 @@ import java.io.IOException
  * رسالة واحدة على الشبكة = [magic:int][type:byte][flags:int][pts:long][len:int][payload:len bytes]
  */
 object Protocol {
-    const val VERSION = "0.7.0"
+    const val VERSION = "0.7.1"
 
     /** نوع الخدمة الذي يعلن به المستقبل عن نفسه على الشبكة (إم دي إن إس). */
     const val SERVICE_TYPE = "_screencaster._tcp."
@@ -32,6 +32,7 @@ object Protocol {
     const val MSG_AUDIO_CONFIG: Byte = 10 // المرسل → المستقبل: إعداد الصوت (json: sampleRate, channels)
     const val MSG_AUDIO: Byte = 11     // المرسل → المستقبل: قطعة صوت خام بي سي إم ١٦ بت
     const val MSG_AUTH_FAIL: Byte = 12 // المستقبل → المرسل: كلمة السر غير صحيحة (ثم يُغلق الاتصال)
+    const val MSG_AUDIO_DELAY: Byte = 13 // المرسل → المستقبل: تأخير الصوت بالمللي ثانية (نص رقمي)
 
     /** كلمة السر الافتراضية للمستقبل. */
     const val DEFAULT_PIN = "1234"

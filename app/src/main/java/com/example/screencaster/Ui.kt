@@ -181,7 +181,7 @@ fun DeviceCard(
 }
 
 @Composable
-fun CastStatusCard(onStop: () -> Unit, onMode: ((String) -> Unit)? = null) {
+fun CastStatusCard(onStop: () -> Unit, onMode: ((String) -> Unit)? = null, onAudioDelay: ((Int) -> Unit)? = null) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -211,6 +211,16 @@ fun CastStatusCard(onStop: () -> Unit, onMode: ((String) -> Unit)? = null) {
                     OutlinedButton(onClick = { onMode("stretch") }) { Text("تمديد") }
                 }
                 Text("اقلب الجهاز أفقياً لتملأ الصورة الشاشة", fontSize = 11.sp)
+            }
+            if (CastState.active && onAudioDelay != null) {
+                Spacer(Modifier.height(6.dp))
+                Text("تزامن الصوت — تأخير الصوت: ${CastState.audioDelay} مللي ثانية", fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { onAudioDelay((CastState.audioDelay - 50).coerceAtLeast(0)) }) { Text("− ٥٠") }
+                    OutlinedButton(onClick = { onAudioDelay((CastState.audioDelay + 50).coerceAtMost(2000)) }) { Text("+ ٥٠") }
+                    OutlinedButton(onClick = { onAudioDelay(0) }) { Text("صفر") }
+                }
+                Text("زد التأخير إن سبق الصوتُ الصورةَ حتى تنطبق الشفاه على الكلام", fontSize = 11.sp)
             }
             if (CastState.active || CastState.connecting) {
                 Spacer(Modifier.height(6.dp))

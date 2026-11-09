@@ -15,6 +15,7 @@ object CastState {
     var seconds by mutableStateOf(0L)
     var size by mutableStateOf("")
     var audio by mutableStateOf("")
+    var audioDelay by mutableStateOf(0)
 
     fun reset() {
         active = false

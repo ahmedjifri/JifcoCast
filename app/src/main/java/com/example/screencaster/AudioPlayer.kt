@@ -17,10 +17,26 @@ class AudioPlayer(private val sampleRate: Int, private val channels: Int) {
     private var thread: Thread? = null
     @Volatile private var running = false
     private val bytesPerSec = sampleRate * channels * 2
-    private val maxQueued = bytesPerSec / 2 // نصف ثانية
+    private val maxQueued get() = bytesPerSec / 2 + bytesPerSec * delayMs / 1000 // نصف ثانية + التأخير المطلوب
     @Volatile private var queuedBytes = 0
+    @Volatile private var delayMs = 0
+    @Volatile private var bytesToDrop = 0
 
-    fun start() {
+    /** تأخير الصوت: زيادة = حقن صمت بقدر الفرق، نقصان = طرح قطع بقدر الفرق. يُطبّق فوراً بلا قطع. */
+    fun setDelay(ms: Int) {
+        val target = ms.coerceIn(0, 2000)
+        val diff = target - delayMs
+        delayMs = target
+        if (diff > 0) {
+            val silence = ByteArray(bytesPerSec * diff / 1000 / 4 * 4)
+            synchronized(queue) { queue.offer(silence); queuedBytes += silence.size }
+        } else if (diff < 0) {
+            bytesToDrop += bytesPerSec * (-diff) / 1000 / 4 * 4
+        }
+    }
+
+    fun start(initialDelayMs: Int = 0) {
+        delayMs = 0
         val chMask = if (channels >= 2) AudioFormat.CHANNEL_OUT_STEREO else AudioFormat.CHANNEL_OUT_MONO
         val minBuf = AudioTrack.getMinBufferSize(sampleRate, chMask, AudioFormat.ENCODING_PCM_16BIT)
         val t = AudioTrack.Builder()
@@ -40,10 +56,17 @@ class AudioPlayer(private val sampleRate: Int, private val channels: Int) {
         track = t
         running = true
         thread = Thread({ loop(t) }, "audio-play").also { it.start() }
+        if (initialDelayMs > 0) setDelay(initialDelayMs)
     }
 
     fun feed(data: ByteArray) {
         if (!running) return
+        if (bytesToDrop > 0) {            // إنقاص التأخير: نطرح قطعاً حتى نستوفي الفرق
+            val d = minOf(bytesToDrop, data.size)
+            bytesToDrop -= d
+            if (d == data.size) return
+            return feed(data.copyOfRange(d, data.size))
+        }
         synchronized(queue) {
             while (queuedBytes + data.size > maxQueued) {
                 val old = queue.poll() ?: break
