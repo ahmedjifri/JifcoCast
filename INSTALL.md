@@ -17,8 +17,4 @@ https://github.com/ahmedjifri/JifcoCast/releases/latest/download/JifcoCast.apk
 نزّل المستودع (Code → Download ZIP) وشغّل `pc/install.bat` ثم `pc/run.bat`.
 
 ## إصدار نسخة جديدة (للمطوّر)
-```
-git tag v0.6.4
-git push origin v0.6.4
-```
-يبني جيت هب أكشنز ملف التثبيت الموقّع ويضعه في Releases تلقائياً (يحتاج الأسرار الأربعة في إعدادات المستودع).
+ارفع رقم `versionCode`/`versionName` في `app/build.gradle.kts` وادفع إلى الفرع الرئيسي؛ يبني جيت هب أكشنز ملف التثبيت الموقّع وينشئ إصداراً باسم النسخة تلقائياً (يحتاج الأسرار الأربعة في إعدادات المستودع).
