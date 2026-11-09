@@ -2,27 +2,109 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- مطلوب لالتقاط صوت التشغيل (لا نلتقط الميكروفون) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+
+    <!-- الحزم التي يفحص التطبيق وجودها (تطبيقات البث المعروفة) — مطلوب على أندرويد ١١+ -->
+    <queries>
+        <package android:name="com.google.android.apps.chromecast.app" />
+        <package android:name="com.android.chrome" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.google.android.gms" />
+        <package android:name="com.samsung.android.smartmirroring" />
+        <package android:name="com.samsung.android.oneconnect" />
+        <package android:name="com.xiaomi.mitv.phone.remotecontroller" />
+        <package android:name="com.xiaomi.smarthome" />
+        <package android:name="com.lgeha.nuts" />
+        <package android:name="com.epson.iprojection" />
+        <package android:name="com.ionitech.airscreen" />
+        <package android:name="com.instantbits.cast.webvideo" />
+        <package android:name="com.bubblesoft.android.bubbleupnp" />
+        <package android:name="com.plexapp.android" />
+        <package android:name="com.google.android.tv.remote.service" />
+        <package android:name="com.roku.remote" />
+        <package android:name="com.amazon.storm.lightning.client.aosp" />
+        <intent>
+            <action android:name="android.settings.CAST_SETTINGS" />
+        </intent>
+    </queries>
+
+    <!-- يعمل على التلفاز (أندرويد تي في) وعلى الجوال من التطبيق نفسه -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
     <application
         android:allowBackup="true"
+        android:banner="@drawable/banner"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.ScreenCaster">
+
+        <!-- شاشة اختيار الدور: نقطة الدخول على الجوال والتلفاز -->
         <activity
-            android:name=".MainActivity"
+            android:name=".RoleActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.ScreenCaster"
-            android:windowSoftInputMode="adjustResize">
+            android:theme="@style/Theme.ScreenCaster">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- شاشة المرسل -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.ScreenCaster"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- تقرير هذا الجهاز -->
+        <activity
+            android:name=".DeviceReportActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.ScreenCaster" />
+
+        <!-- تقرير أجهزة الشبكة -->
+        <activity
+            android:name=".NetworkReportActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.ScreenCaster" />
+
+        <!-- شاشة المستقبل -->
+        <activity
+            android:name=".ReceiverActivity"
+            android:exported="false"
+            android:label="@string/receiver_name"
+            android:theme="@style/Theme.Receiver"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="landscape" />
+
+        <!-- خدمة البث (أمامية، من نوع التقاط الشاشة) -->
+        <service
+            android:name=".CastService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
     </application>
 
 </manifest>

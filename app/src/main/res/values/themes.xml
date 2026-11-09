@@ -2,4 +2,8 @@
 <resources>
 
     <style name="Theme.ScreenCaster" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Receiver" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
 </resources>

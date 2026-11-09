@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ScreenCaster"
 include(":app")
- 
+include(":shared")

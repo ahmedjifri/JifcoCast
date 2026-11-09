@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">ScreenCaster</string>
+    <string name="app_name">Jifco Cast</string>
+    <string name="receiver_name">Jifco Cast - Receiver</string>
 </resources>
