@@ -56,7 +56,7 @@ object CastApps {
         CastApp("روكو", "com.roku.remote", "مرسل", "روكو", "أجهزة روكو", "ريموت وبث وسائط"),
         CastApp("فاير تي في ريموت", "com.amazon.storm.lightning.client.aosp", "مرسل", "أمازون",
             "فاير تي في", "ريموت فقط"),
-        CastApp("Jifco Cast (هذا البرنامج)", "com.example.screencaster", "مرسل ومستقبل", "عاكس (إتش ٢٦٤ عبر الشبكة المحلية)",
+        CastApp("Jifrico Cast (هذا البرنامج)", "com.example.screencaster", "مرسل ومستقبل", "عاكس (إتش ٢٦٤ عبر الشبكة المحلية)",
             "أي جهاز أندرويد مركّب عليه عاكس", "عكس الشاشة مباشرة بلا وسيط")
     )
 

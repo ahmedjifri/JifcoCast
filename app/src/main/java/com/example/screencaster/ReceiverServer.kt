@@ -77,7 +77,7 @@ class ReceiverServer(
     }
 
     private fun me(): DeviceInfo = DeviceInfo(
-        name = "Jifco Cast على ${Build.MANUFACTURER} ${Build.MODEL}",
+        name = "Jifrico Cast على ${Build.MANUFACTURER} ${Build.MODEL}",
         model = Build.MODEL,
         role = "receiver",
         version = Protocol.VERSION,

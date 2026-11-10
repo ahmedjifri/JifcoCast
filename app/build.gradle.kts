@@ -22,8 +22,8 @@ android {
         applicationId = "com.example.screencaster"
         minSdk = 24
         targetSdk = 37
-        versionCode = 34
-        versionName = "0.7.9"
+        versionCode = 35
+        versionName = "0.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

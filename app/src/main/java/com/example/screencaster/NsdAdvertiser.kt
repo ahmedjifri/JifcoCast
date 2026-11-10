@@ -18,7 +18,7 @@ class NsdAdvertiser(ctx: Context, private val onLog: (String) -> Unit) {
             serviceName = "ScreenCaster-$model"
             serviceType = Protocol.SERVICE_TYPE
             this.port = port
-            setAttribute("fn", "Jifco Cast على ${Build.MANUFACTURER} ${Build.MODEL}")
+            setAttribute("fn", "Jifrico Cast على ${Build.MANUFACTURER} ${Build.MODEL}")
             setAttribute("md", Build.MODEL)
             setAttribute("v", Protocol.VERSION)
         }

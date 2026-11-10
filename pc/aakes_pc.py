@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Jifco Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
+Jifrico Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.4.5"
-APP_NAME = "Jifco Cast"
+VERSION = "0.4.6"
+APP_NAME = "Jifrico Cast"
 
 import json
 import os
@@ -432,7 +432,7 @@ class App:
         ttk.Label(head, text="Ready to Send", style="Title.TLabel").pack(side="right")
         ttk.Button(head, text="خروج", command=self.on_close).pack(side="left")
 
-        ttk.Label(f, text="المستقبلات في الشبكة (افتح «Jifco Cast - Receiver» على كروم كاست):", anchor="e", justify="right", style="Card.TLabel").pack(fill="x", pady=(8, 0))
+        ttk.Label(f, text="المستقبلات في الشبكة (افتح «Jifrico Cast - Receiver» على كروم كاست):", anchor="e", justify="right", style="Card.TLabel").pack(fill="x", pady=(8, 0))
         self.listbox = tk.Listbox(f, height=6, justify="right", font=("Segoe UI", 11))
         self.listbox.pack(fill="x", pady=4)
 

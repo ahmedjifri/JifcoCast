@@ -151,9 +151,9 @@ fun RoleScreen(
 
         Text("ما دور هذا الجهاز الآن؟", fontSize = 18.sp)
         Spacer(Modifier.height(12.dp))
-        TvButton("Jifco Cast - Sender\nمرسل — يعرض شاشته على غيره", fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(72.dp), onClick = onSender)
+        TvButton("Jifrico Cast - Sender\nمرسل — يعرض شاشته على غيره", fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(72.dp), onClick = onSender)
         Spacer(Modifier.height(10.dp))
-        TvButton("Jifco Cast - Receiver\nمستقبل — يستقبل شاشة غيره", fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(72.dp), onClick = onReceiver)
+        TvButton("Jifrico Cast - Receiver\nمستقبل — يستقبل شاشة غيره", fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(72.dp), onClick = onReceiver)
 
         Spacer(Modifier.height(32.dp))
         TvButton("التحقق من التحديثات", outlined = true, fontSize = 15.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(52.dp), onClick = { manualCheck = true })
@@ -226,7 +226,7 @@ fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
         needPermission -> AlertDialog(
             onDismissRequest = { needPermission = false },
             title = { Text("إذن التثبيت") },
-            text = { Text("إن لم يظهر مثبّت النظام أو رفض: يحتاج الجهاز موافقتك مرة واحدة على السماح لـ Jifco Cast بتثبيت التطبيقات. اضغط «فتح الإعداد»، فعّل «السماح من هذا المصدر» (في بعض الأجهزة: الأمان ← التطبيقات غير المعروفة ← Jifco Cast)، ثم ارجع واضغط «تثبيت».") },
+            text = { Text("إن لم يظهر مثبّت النظام أو رفض: يحتاج الجهاز موافقتك مرة واحدة على السماح لـ Jifrico Cast بتثبيت التطبيقات. اضغط «فتح الإعداد»، فعّل «السماح من هذا المصدر» (في بعض الأجهزة: الأمان ← التطبيقات غير المعروفة ← Jifrico Cast)، ثم ارجع واضغط «تثبيت».") },
             confirmButton = { Button(onClick = { val err = Updater.openInstallPermission(ctx); if (err != null) { error = err; state = "failed" }; needPermission = false }) { Text("فتح الإعداد") } },
             dismissButton = { TextButton(onClick = { needPermission = false; installAgain() }) { Text("تثبيت") } }
         )

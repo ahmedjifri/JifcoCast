@@ -71,7 +71,7 @@ fun SenderScreen() {
     val receivers = remember { mutableStateListOf<DiscoveredDevice>() }
     val probeResults = remember { mutableStateMapOf<String, String>() }
     var scanning by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("اضغط «ابحث عن المستقبلات» — يظهر هنا كل جهاز مفتوح عليه «Jifco Cast - Receiver»") }
+    var status by remember { mutableStateOf("اضغط «ابحث عن المستقبلات» — يظهر هنا كل جهاز مفتوح عليه «Jifrico Cast - Receiver»") }
     var pendingTarget by remember { mutableStateOf<DiscoveredDevice?>(null) }
     var qualityIndex by remember { mutableStateOf(Qualities.index(ctx)) }
     var pinDialogFor by remember { mutableStateOf<DiscoveredDevice?>(null) }
@@ -162,7 +162,7 @@ fun SenderScreen() {
             onDone = {
                 scanning = false
                 status = if (receivers.isEmpty())
-                    "لم يُوجد مستقبل. افتح «Jifco Cast» على الشاشة واختر «Receiver»، وتأكد أن الجهازين على الواي فاي نفسه."
+                    "لم يُوجد مستقبل. افتح «Jifrico Cast» على الشاشة واختر «Receiver»، وتأكد أن الجهازين على الواي فاي نفسه."
                 else "وُجد ${receivers.size} مستقبل"
             }
         )

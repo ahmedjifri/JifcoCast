@@ -133,10 +133,10 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
 
     private fun showIdle() {
         val port = server?.port ?: Protocol.DEFAULT_PORT
-        statusText.text = "Jifco Cast - Receiver\nReady to Receive\n\n" +
+        statusText.text = "Jifrico Cast - Receiver\nReady to Receive\n\n" +
             "الجهاز: ${Build.MANUFACTURER} ${Build.MODEL}\n" +
             "العنوان: ${NetUtils.localIpv4() ?: "غير معروف"} : $port\n\n" +
-            "افتح «Jifco Cast - Sender» على الجوال أو الحاسب واضغط «ابحث عن المستقبلات»\n" +
+            "افتح «Jifrico Cast - Sender» على الجوال أو الحاسب واضغط «ابحث عن المستقبلات»\n" +
             "محمي بكلمة سر" + (if (PinStore.receiverPin(this) == Protocol.DEFAULT_PIN) " (الافتراضية 1234 — غيّرها من زر «تغيير كلمة السر» أسفل الشاشة)" else "") + "\n\n" +
             "النسخة ${Protocol.VERSION}\n\nأثناء البث: أزرار ◀ ▶ في الريموت تبدّل وضع العرض (ملاءمة / ملء / تمديد)"
         idleBg.visibility = View.VISIBLE

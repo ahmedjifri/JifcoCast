@@ -10,7 +10,7 @@ import java.io.IOException
  * رسالة واحدة على الشبكة = [magic:int][type:byte][flags:int][pts:long][len:int][payload:len bytes]
  */
 object Protocol {
-    const val VERSION = "0.7.9"
+    const val VERSION = "0.8.0"
 
     /** نوع الخدمة الذي يعلن به المستقبل عن نفسه على الشبكة (إم دي إن إس). */
     const val SERVICE_TYPE = "_screencaster._tcp."

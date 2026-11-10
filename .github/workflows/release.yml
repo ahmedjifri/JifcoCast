@@ -56,5 +56,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.version }}
-          name: Jifco Cast ${{ steps.ver.outputs.version }}
+          name: Jifrico Cast ${{ steps.ver.outputs.version }}
           files: JifcoCast.apk

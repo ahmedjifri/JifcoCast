@@ -47,7 +47,7 @@ import com.example.screencaster.shared.Protocol
 
 /** عناصر واجهة مشتركة بين الشاشات. */
 
-const val APP_NAME = "Jifco Cast"
+const val APP_NAME = "Jifrico Cast"
 val ScreenBg = Color(0xFF0F1F3D)      // خلفية الشاشة (كحلي غامق)
 val FrameBg = Color(0xFFF6F3EA)       // داخل البرواز (فاتح)
 val FrameBorder = Color(0xFFC9A227)   // حد البرواز (ذهبي)
