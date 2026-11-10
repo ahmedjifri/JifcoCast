@@ -41,9 +41,16 @@ class ReceiverServer(
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
     private var currentAudio: () -> AudioPlayer? = { null }
+    private var currentDecoder: () -> VideoDecoder? = { null }
 
-    /** تغيير التأخير من المستقبل نفسه (الريموت). */
-    fun applyAudioDelay(ms: Int) { currentAudio()?.setDelay(ms) }
+    /**
+     * تزامن الصوت بقيمة موقّعة: الموجب يؤخّر الصوت، والسالب يؤخّر الصورة بالمقدار نفسه
+     * (الصوت لا يُقدَّم عن لحظة وصوله). يُستدعى من الريموت ومن رسالة المرسل.
+     */
+    fun applyAudioDelay(ms: Int) {
+        currentAudio()?.setDelay(maxOf(ms, 0))
+        currentDecoder()?.setDelay(maxOf(-ms, 0))
+    }
     @Volatile private var current: Socket? = null
 
     var port: Int = 0
@@ -95,6 +102,7 @@ class ReceiverServer(
         var decoder: VideoDecoder? = null
         var audio: AudioPlayer? = null
         currentAudio = { audio }
+        currentDecoder = { decoder }
         var frames = 0L
         try {
             client.tcpNoDelay = true
@@ -130,6 +138,7 @@ class ReceiverServer(
                                 decoder?.release()
                                 decoder = VideoDecoder(surface).also {
                                     it.start(peer.width, peer.height)
+                                    it.setDelay(maxOf(-audioDelayProvider(), 0))
                                     it.feed(m.payload, 0L, true)
                                 }
                                 lastConfig = m.payload
@@ -155,15 +164,16 @@ class ReceiverServer(
                         val o = org.json.JSONObject(String(m.payload, Charsets.UTF_8))
                         audio?.release()
                         audio = try {
-                            AudioPlayer(o.optInt("sampleRate", Protocol.AUDIO_SAMPLE_RATE), o.optInt("channels", Protocol.AUDIO_CHANNELS)).also { it.start(audioDelayProvider()) }
+                            AudioPlayer(o.optInt("sampleRate", Protocol.AUDIO_SAMPLE_RATE), o.optInt("channels", Protocol.AUDIO_CHANNELS)).also { it.start(maxOf(audioDelayProvider(), 0)) }
                         } catch (_: Exception) { null }
                         listener.onAudio(audio != null)
                     }
                     Protocol.MSG_AUDIO -> audio?.feed(m.payload)
                     Protocol.MSG_AUDIO_DELAY -> {
                         val ms = String(m.payload, Charsets.UTF_8).trim().toIntOrNull() ?: 0
-                        listener.onAudioDelay(ms)
-                        audio?.setDelay(ms)
+                        val v = ms.coerceIn(Protocol.SYNC_MIN_MS, Protocol.SYNC_MAX_MS)
+                        listener.onAudioDelay(v)
+                        applyAudioDelay(v)
                     }
                     Protocol.MSG_PING -> { /* نبضة حياة من المرسل — لا ردّ كي لا يمتلئ مخزن المرسل */ }
                     Protocol.MSG_BYE -> return

@@ -191,13 +191,20 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
     /** تأخير الصوت (مللي ثانية) — يُحفظ ويُطبّق على كل بث. */
     private var audioDelay: Int
         get() = getSharedPreferences("aakes", MODE_PRIVATE).getInt("audio_delay", 0)
-        set(v) = getSharedPreferences("aakes", MODE_PRIVATE).edit().putInt("audio_delay", v.coerceIn(0, 2000)).apply()
+        set(v) = getSharedPreferences("aakes", MODE_PRIVATE).edit().putInt("audio_delay", v.coerceIn(Protocol.SYNC_MIN_MS, Protocol.SYNC_MAX_MS)).apply()
+
+    /** نص التزامن بقيمة موقّعة: الموجب تأخير للصوت، والسالب تأخير للصورة. */
+    private fun syncLabel(v: Int): String {
+        val num = "\u2066" + (if (v < 0) "−" else if (v > 0) "+" else "") + kotlin.math.abs(v) + "\u2069"
+        val what = if (v < 0) "الصورة تتأخر" else if (v > 0) "الصوت يتأخر" else "بلا تأخير"
+        return "تزامن الصوت: $num مللي ثانية ($what)"
+    }
 
     private fun changeAudioDelay(delta: Int, fromSender: Boolean = false, absolute: Int? = null) {
-        val v = (absolute ?: (audioDelay + delta)).coerceIn(0, 2000)
+        val v = (absolute ?: (audioDelay + delta)).coerceIn(Protocol.SYNC_MIN_MS, Protocol.SYNC_MAX_MS)
         audioDelay = v
         if (!fromSender) server?.applyAudioDelay(v)
-        modeText.text = "تأخير الصوت: $v مللي ثانية"
+        modeText.text = syncLabel(v)
         modeText.visibility = View.VISIBLE
         main.removeCallbacks(hideHint)
         main.postDelayed(hideHint, 2500)
@@ -286,7 +293,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
                     main.post { mode = m; fitSurface(videoW, videoH); showModeHint() }
                 }
                 override fun onAudio(ok: Boolean) {
-                    log(if (ok) "الصوت: يعمل (تأخير $audioDelay مللي ثانية)" else "الصوت: تعذر تشغيله")
+                    log(if (ok) "الصوت: يعمل — ${syncLabel(audioDelay)}" else "الصوت: تعذر تشغيله")
                 }
                 override fun onAudioDelay(ms: Int) {
                     main.post { changeAudioDelay(0, fromSender = true, absolute = ms) }

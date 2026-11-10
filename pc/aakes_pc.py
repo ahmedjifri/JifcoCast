@@ -3,7 +3,7 @@
 Jifco Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 APP_NAME = "Jifco Cast"
 
 import json
@@ -471,7 +471,7 @@ class App:
 
         row4 = ttk.Frame(f, style="Card.TFrame"); row4.pack(fill="x", pady=2)
         self.delay_var = tk.IntVar(value=int(load_settings().get("audio_delay", 0)))
-        self.delay_label = ttk.Label(row4, text=f"تزامن الصوت — تأخير {self.delay_var.get()} مللي ثانية:", style="Card.TLabel")
+        self.delay_label = ttk.Label(row4, text=self.sync_text(self.delay_var.get()), style="Card.TLabel")
         self.delay_label.pack(side="right", padx=4)
         self.delay_btns = []
         for label, d in (("− ٥٠", -50), ("+ ٥٠", 50), ("صفر", None)):
@@ -497,7 +497,7 @@ class App:
             self.cast_btn.config(state="disabled" if on else "normal", text="جارٍ العكس…" if on else "عكس الشاشة")
             self.stop_btn.config(state="normal" if on else "disabled")
             for b in self.mode_btns + self.delay_btns: b.config(state="normal" if on else "disabled")
-            if on and self.sender and self.delay_var.get():
+            if on and self.sender and self.delay_var.get() != 0:
                 self.sender.set_audio_delay(self.delay_var.get())   # إرسال التأخير المحفوظ عند بدء البث
             if not on:
                 self.stats_var.set("")
@@ -586,10 +586,17 @@ class App:
         if self.sender:
             self.sender.set_mode(mode)
 
+    @staticmethod
+    def sync_text(v):
+        # قيمة موقّعة: الموجب يؤخّر الصوت، والسالب يؤخّر الصورة في المستقبل
+        num = "\u2066" + ("−" if v < 0 else "+" if v > 0 else "") + str(abs(v)) + "\u2069"
+        what = "الصورة تتأخر" if v < 0 else "الصوت يتأخر" if v > 0 else "بلا تأخير"
+        return f"تزامن الصوت: {num} مللي ثانية ({what}):"
+
     def change_delay(self, d):
-        v = 0 if d is None else max(0, min(2000, self.delay_var.get() + d))
+        v = 0 if d is None else max(-1000, min(2000, self.delay_var.get() + d))
         self.delay_var.set(v)
-        self.delay_label.config(text=f"تزامن الصوت — تأخير {v} مللي ثانية:")
+        self.delay_label.config(text=self.sync_text(v))
         self.settings["audio_delay"] = v
         save_settings(self.settings)
         if self.sender:

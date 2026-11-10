@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.screencaster.shared.Protocol
 
 /** عناصر واجهة مشتركة بين الشاشات. */
 
@@ -214,13 +215,16 @@ fun CastStatusCard(onStop: () -> Unit, onMode: ((String) -> Unit)? = null, onAud
             }
             if (CastState.active && onAudioDelay != null) {
                 Spacer(Modifier.height(6.dp))
-                Text("تزامن الصوت — تأخير الصوت: ${CastState.audioDelay} مللي ثانية", fontSize = 12.sp)
+                val sv = CastState.audioDelay
+                val sNum = "\u2066" + (if (sv < 0) "−" else if (sv > 0) "+" else "") + kotlin.math.abs(sv) + "\u2069"
+                val sWhat = if (sv < 0) "الصورة تتأخر" else if (sv > 0) "الصوت يتأخر" else "بلا تأخير"
+                Text("تزامن الصوت: $sNum مللي ثانية ($sWhat)", fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = { onAudioDelay((CastState.audioDelay - 50).coerceAtLeast(0)) }) { Text("− ٥٠") }
-                    OutlinedButton(onClick = { onAudioDelay((CastState.audioDelay + 50).coerceAtMost(2000)) }) { Text("+ ٥٠") }
+                    OutlinedButton(onClick = { onAudioDelay((CastState.audioDelay - Protocol.SYNC_STEP_MS).coerceAtLeast(Protocol.SYNC_MIN_MS)) }) { Text("− ٥٠") }
+                    OutlinedButton(onClick = { onAudioDelay((CastState.audioDelay + Protocol.SYNC_STEP_MS).coerceAtMost(Protocol.SYNC_MAX_MS)) }) { Text("+ ٥٠") }
                     OutlinedButton(onClick = { onAudioDelay(0) }) { Text("صفر") }
                 }
-                Text("زد التأخير إن سبق الصوتُ الصورةَ حتى تنطبق الشفاه على الكلام", fontSize = 11.sp)
+                Text("الزائد يؤخّر الصوت (إن سبق الصوتُ الصورةَ) · الناقص تحت الصفر يؤخّر الصورة (إن سبقت الصورةُ الصوتَ)", fontSize = 11.sp)
             }
             if (CastState.active || CastState.connecting) {
                 Spacer(Modifier.height(6.dp))
