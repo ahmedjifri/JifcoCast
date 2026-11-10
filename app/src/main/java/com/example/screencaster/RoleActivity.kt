@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 class RoleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Updater.installCrashRecorder(this)
         requestHomeShortcutOnce()
         setContent {
             MaterialTheme {
@@ -100,6 +101,23 @@ fun RoleScreen(
 ) {
     var manualCheck by androidx.compose.runtime.remember { mutableStateOf(false) }
     var showSettings by androidx.compose.runtime.remember { mutableStateOf(false) }
+    var showLog by androidx.compose.runtime.remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    if (showLog) AlertDialog(
+        onDismissRequest = { showLog = false },
+        title = { Text("سجل التحديث") },
+        text = {
+            val crash = Updater.lastCrash(ctx)
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("النسخة ${Protocol.VERSION} · إذن التثبيت: ${if (Updater.canInstall(ctx)) "ممنوح" else "غير ممنوح"}", fontSize = 12.sp)
+                Spacer(Modifier.height(6.dp))
+                Text(Updater.readLog(ctx).ifBlank { "لا شيء بعد" }, fontSize = 11.sp)
+                if (crash.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text("آخر انهيار:", fontSize = 12.sp); Text(crash, fontSize = 10.sp) }
+            }
+        },
+        confirmButton = { Button(onClick = { showLog = false }) { Text("إغلاق") } },
+        dismissButton = { TextButton(onClick = { Updater.clearLog(ctx); showLog = false }) { Text("مسح") } }
+    )
     if (manualCheck) UpdateDialogs(autoCheck = false, onDone = { manualCheck = false })
     if (showSettings) AlertDialog(
         onDismissRequest = { showSettings = false },
@@ -109,6 +127,8 @@ fun RoleScreen(
                 TvButton("هذا الجهاز — هل يبثّ/يستقبل وبأي تقنية، وتطبيقات البث عليه", outlined = true, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().height(64.dp)) { showSettings = false; onDeviceReport() }
                 Spacer(Modifier.height(8.dp))
                 TvButton("أجهزة الشبكة — ما يمكن البث إليه وكيف", outlined = true, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().height(64.dp)) { showSettings = false; onNetworkReport() }
+                Spacer(Modifier.height(8.dp))
+                TvButton("سجل التحديث (للتشخيص)", outlined = true, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().height(52.dp)) { showSettings = false; showLog = true }
             }
         },
         confirmButton = { TextButton(onClick = { showSettings = false }) { Text("إغلاق") } }
@@ -176,15 +196,19 @@ fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
     fun startDownload() {
         val rel = release ?: return
         state = "downloading"; progress = 0
+        Updater.log(ctx, "بدء التنزيل ${rel.version} — إذن التثبيت: ${if (Updater.canInstall(ctx)) "ممنوح" else "غير ممنوح"}")
         Thread {
             try {
                 val f = Updater.download(ctx, rel) { p -> progress = p }
+                Updater.log(ctx, "اكتمل التنزيل ${f.length() / 1024} ك.ب")
                 state = "done"
                 val err = Updater.install(ctx, f)
+                Updater.log(ctx, if (err == null) "فُتح مثبّت النظام" else "فشل فتح المثبّت: $err")
                 if (err != null) { error = err; state = "failed" }
                 else if (!Updater.canInstall(ctx)) needPermission = true   // التلفاز: قد يحتاج الإذن قبل أن يقبل المثبّت
             } catch (e: Exception) {
                 error = e.message ?: e.javaClass.simpleName
+                Updater.log(ctx, "فشل: $error")
                 state = "failed"
             }
         }.start()
@@ -194,6 +218,7 @@ fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
         val f = java.io.File(ctx.cacheDir, "updates/JifcoCast-${r.version}.apk")
         if (!f.exists()) { startDownload(); return }
         val err = Updater.install(ctx, f)
+        Updater.log(ctx, if (err == null) "إعادة فتح المثبّت" else "فشل فتح المثبّت: $err")
         if (err != null) { error = err; state = "failed" }
     }
 
@@ -211,11 +236,21 @@ fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
             text = {
                 Column {
                     Text("النسخة الحالية ${Protocol.VERSION}. التحديث يحمّل ملف التثبيت (نحو ٨ ميجابايت) ثم يفتح مثبّت النظام.", fontSize = 13.sp)
+                    val granted = Updater.canInstall(ctx)
+                    Spacer(Modifier.height(6.dp))
+                    Text(if (granted) "إذن التثبيت: ممنوح ✓" else "إذن التثبيت: غير ممنوح — اضغط «منح الإذن» أولاً (مرة واحدة)، ثم «تحديث الآن»", fontSize = 12.sp)
                     val notes = release?.notes?.trim().orEmpty()
-                    if (notes.isNotBlank()) { Spacer(Modifier.height(6.dp)); Text(notes.take(400), fontSize = 12.sp) }
+                    if (notes.isNotBlank() && notes != "null") { Spacer(Modifier.height(6.dp)); Text(notes.take(400), fontSize = 12.sp) }
                 }
             },
-            confirmButton = { Button(onClick = { startDownload() }) { Text("تحديث الآن") } },
+            confirmButton = {
+                androidx.compose.foundation.layout.Row {
+                    if (!Updater.canInstall(ctx)) {
+                        TextButton(onClick = { Updater.log(ctx, "فتح شاشة الإذن"); val err = Updater.openInstallPermission(ctx); if (err != null) { Updater.log(ctx, err); error = err; state = "failed" } }) { Text("منح الإذن") }
+                    }
+                    Button(onClick = { startDownload() }) { Text("تحديث الآن") }
+                }
+            },
             dismissButton = { TextButton(onClick = { release?.let { Updater.snooze(ctx, it.version) }; state = "none"; onDone() }) { Text("لاحقاً") } }
         )
         state == "downloading" -> AlertDialog(

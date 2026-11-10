@@ -24,6 +24,30 @@ object Updater {
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("aakes", Context.MODE_PRIVATE)
 
+    /** سجل خطوات التحديث (آخر ٤٠ سطراً) — يُعرض من الإعدادات لتشخيص أي عطل على التلفاز. */
+    fun log(ctx: Context, msg: String) {
+        val p = prefs(ctx)
+        val t = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        val lines = (p.getString("update_log", "") ?: "").lines().filter { it.isNotBlank() }.takeLast(39) + "$t $msg"
+        p.edit().putString("update_log", lines.joinToString("\n")).apply()
+    }
+    fun readLog(ctx: Context): String = prefs(ctx).getString("update_log", "") ?: ""
+    fun clearLog(ctx: Context) { prefs(ctx).edit().remove("update_log").remove("last_crash").apply() }
+
+    /** يسجّل أي انهيار غير معالَج في التفضيلات ليُقرأ عند التشغيل التالي. */
+    fun installCrashRecorder(ctx: Context) {
+        val app = ctx.applicationContext
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                val sw = java.io.StringWriter(); e.printStackTrace(java.io.PrintWriter(sw))
+                prefs(app).edit().putString("last_crash", "${java.util.Date()} [${t.name}]\n${sw.toString().take(3000)}").commit()
+            } catch (_: Exception) {}
+            prev?.uncaughtException(t, e)
+        }
+    }
+    fun lastCrash(ctx: Context): String = prefs(ctx).getString("last_crash", "") ?: ""
+
     /** يجلب آخر إصدار (يُستدعى من خيط خلفي). null إن تعذّر. */
     fun fetchLatest(): Release? = try {
         val c = (URL(API).openConnection() as HttpURLConnection).apply {
@@ -41,7 +65,8 @@ object Updater {
             val a = assets.getJSONObject(i)
             if (a.optString("name").endsWith(".apk")) { url = a.optString("browser_download_url"); break }
         }
-        if (tag.isBlank() || url.isBlank()) null else Release(tag, url, o.optString("body"))
+        val notes = if (o.isNull("body")) "" else o.optString("body", "")
+        if (tag.isBlank() || url.isBlank()) null else Release(tag, url, notes)
     } catch (_: Exception) { null }
 
     /** هل النسخة a أحدث من b؟ مقارنة رقمية جزءاً جزءاً (0.7.10 > 0.7.9). */
