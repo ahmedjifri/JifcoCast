@@ -109,8 +109,6 @@ fun RoleScreen(
                 TvButton("هذا الجهاز — هل يبثّ/يستقبل وبأي تقنية، وتطبيقات البث عليه", outlined = true, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().height(64.dp)) { showSettings = false; onDeviceReport() }
                 Spacer(Modifier.height(8.dp))
                 TvButton("أجهزة الشبكة — ما يمكن البث إليه وكيف", outlined = true, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().height(64.dp)) { showSettings = false; onNetworkReport() }
-                Spacer(Modifier.height(8.dp))
-                TvButton("التحقق من التحديثات", outlined = true, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().height(52.dp)) { showSettings = false; manualCheck = true }
             }
         },
         confirmButton = { TextButton(onClick = { showSettings = false }) { Text("إغلاق") } }
@@ -138,6 +136,8 @@ fun RoleScreen(
         TvButton("Jifco Cast - Receiver\nمستقبل — يستقبل شاشة غيره", fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(72.dp), onClick = onReceiver)
 
         Spacer(Modifier.height(32.dp))
+        TvButton("التحقق من التحديثات", outlined = true, fontSize = 15.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(52.dp), onClick = { manualCheck = true })
+        Spacer(Modifier.height(10.dp))
         TvButton("خروج من البرنامج", outlined = true, fontSize = 16.sp, modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(52.dp), onClick = onExit)
         Spacer(Modifier.height(8.dp))
     }
