@@ -221,10 +221,11 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         if (streaming) {
             when (keyCode) {
-                android.view.KeyEvent.KEYCODE_DPAD_RIGHT, android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_MENU -> { cycleMode(true); return true }
-                android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_UP -> { cycleMode(false); return true }
-                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> { changeAudioDelay(+50); return true }
-                android.view.KeyEvent.KEYCODE_MEDIA_REWIND, android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> { changeAudioDelay(-50); return true }
+                // يمين/يسار (أو زر القائمة): وضع العرض — أعلى/أسفل: تزامن الصوت ±٥٠ (وأزرار الوسائط تعمل أيضاً)
+                android.view.KeyEvent.KEYCODE_DPAD_RIGHT, android.view.KeyEvent.KEYCODE_MENU -> { cycleMode(true); return true }
+                android.view.KeyEvent.KEYCODE_DPAD_LEFT -> { cycleMode(false); return true }
+                android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> { changeAudioDelay(+50); return true }
+                android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_REWIND, android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> { changeAudioDelay(-50); return true }
             }
         }
         return super.onKeyDown(keyCode, event)

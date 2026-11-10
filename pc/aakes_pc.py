@@ -3,7 +3,7 @@
 Jifco Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 APP_NAME = "Jifco Cast"
 
 import json
@@ -249,6 +249,8 @@ class Sender(threading.Thread):
                     raise IOError("ردّ غير متوقع من المستقبل")
                 self.ui.pin_ok(self.host, self.pin)
                 peer = json.loads(payload.decode("utf-8"))
+                if "audioDelay" in peer:
+                    self.ui.adopt_delay(int(peer.get("audioDelay") or 0))   # قيمة المستقبل المحفوظة هي المرجع
                 self.conn.sock.settimeout(None)
                 self.ui.status(f"يبثّ إلى {peer.get('name', self.host)} — {w}×{h} — {self.bitrate//1_000_000} ميجابت/ث")
                 self.ui.streaming(True)
@@ -497,8 +499,7 @@ class App:
             self.cast_btn.config(state="disabled" if on else "normal", text="جارٍ العكس…" if on else "عكس الشاشة")
             self.stop_btn.config(state="normal" if on else "disabled")
             for b in self.mode_btns + self.delay_btns: b.config(state="normal" if on else "disabled")
-            if on and self.sender and self.delay_var.get() != 0:
-                self.sender.set_audio_delay(self.delay_var.get())   # إرسال التأخير المحفوظ عند بدء البث
+            # قيمة التزامن تأتي من المستقبل في ردّ التعريف (adopt_delay)؛ لا نفرض قيمتنا عليه
             if not on:
                 self.stats_var.set("")
         self.root.after(0, apply)
@@ -592,6 +593,13 @@ class App:
         num = "\u2066" + ("−" if v < 0 else "+" if v > 0 else "") + str(abs(v)) + "\u2069"
         what = "الصورة تتأخر" if v < 0 else "الصوت يتأخر" if v > 0 else "بلا تأخير"
         return f"تزامن الصوت: {num} مللي ثانية ({what}):"
+
+    def adopt_delay(self, v):
+        """تُعرض قيمة التزامن المحفوظة في المستقبل كما هي عند بدء البث."""
+        def apply():
+            self.delay_var.set(v)
+            self.delay_label.config(text=self.sync_text(v))
+        self.root.after(0, apply)
 
     def change_delay(self, d):
         v = 0 if d is None else max(-1000, min(2000, self.delay_var.get() + d))

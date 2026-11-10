@@ -196,7 +196,11 @@ class CastService : Service() {
             }
             if (ack.type != Protocol.MSG_HELLO_ACK) throw IllegalStateException("ردّ غير متوقع من المستقبل")
             PinStore.savePin(this, host, pin)
-            val peer = DeviceInfo.fromJson(String(ack.payload, Charsets.UTF_8))
+            val ackText = String(ack.payload, Charsets.UTF_8)
+            val peer = DeviceInfo.fromJson(ackText)
+            // قيمة التزامن المحفوظة في المستقبل (إن أرسلها) تُعرض على اللوحي
+            val savedDelay = try { org.json.JSONObject(ackText).optInt("audioDelay", 0) } catch (_: Exception) { 0 }
+            main.post { CastState.audioDelay = savedDelay }
             s.soTimeout = 0
 
             // ٢) المشفّر

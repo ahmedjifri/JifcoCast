@@ -123,7 +123,9 @@ class ReceiverServer(
             var lastConfig: ByteArray? = null
             listener.onConnected(peer)
             listener.onStatus("متصل بـ ${peer.name}\nينتظر بدء البث…")
-            out.writeMessage(Message(Protocol.MSG_HELLO_ACK, me().toJson().toByteArray(Charsets.UTF_8)))
+            // في الردّ نرسل أيضاً قيمة التزامن المحفوظة هنا ليعرضها المرسل بدل الصفر
+            val ackJson = org.json.JSONObject(me().toJson()).put("audioDelay", audioDelayProvider()).toString()
+            out.writeMessage(Message(Protocol.MSG_HELLO_ACK, ackJson.toByteArray(Charsets.UTF_8)))
 
             while (running) {
                 val m = inp.readMessage()
