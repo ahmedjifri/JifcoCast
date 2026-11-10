@@ -102,24 +102,45 @@ object Updater {
         return out
     }
 
-    /** يفتح مثبّت النظام للملف المحمّل. */
-    fun install(ctx: Context, apk: File) {
+    /**
+     * يفتح مثبّت النظام للملف المحمّل. يعيد رسالة خطأ أو null عند النجاح.
+     * على التلفاز إن لم يكن إذن «مصادر غير معروفة» ممنوحاً فالمثبّت نفسه يعرض زر الإعدادات.
+     */
+    fun install(ctx: Context, apk: File): String? = try {
         val uri: Uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", apk)
-        val i = Intent(Intent.ACTION_VIEW).apply {
+        val i = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
+            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+            putExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME, ctx.packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        ctx.startActivity(i)
-    }
+        if (i.resolveActivity(ctx.packageManager) != null) ctx.startActivity(i)
+        else ctx.startActivity(Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        })
+        null
+    } catch (e: Exception) { "تعذر فتح مثبّت النظام: ${e.message ?: e.javaClass.simpleName}" }
 
     /** هل يسمح النظام لهذا التطبيق بتثبيت الحزم؟ (أندرويد ٨+ يحتاج موافقة مرة واحدة) */
     fun canInstall(ctx: Context): Boolean =
         Build.VERSION.SDK_INT < 26 || ctx.packageManager.canRequestPackageInstalls()
 
-    fun openInstallPermission(ctx: Context) {
-        if (Build.VERSION.SDK_INT >= 26) {
-            ctx.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    /** يفتح شاشة إذن «التثبيت من هذا المصدر»؛ وإن لم تتوفر (بعض أجهزة التلفاز) يفتح إعدادات الأمان العامة. يعيد رسالة خطأ أو null. */
+    fun openInstallPermission(ctx: Context): String? {
+        if (Build.VERSION.SDK_INT < 26) return null
+        val candidates = listOf(
+            Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}")),
+            Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES),
+            Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS),
+            Intent(android.provider.Settings.ACTION_SETTINGS)
+        )
+        for (i in candidates) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (i.resolveActivity(ctx.packageManager) != null) { ctx.startActivity(i); return null }
+            } catch (_: Exception) {}
         }
+        return "لم أجد شاشة الإعداد على هذا الجهاز"
     }
 }

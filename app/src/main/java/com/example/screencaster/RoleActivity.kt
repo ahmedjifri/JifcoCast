@@ -162,27 +162,35 @@ fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
 
     fun startDownload() {
         val rel = release ?: return
-        if (!Updater.canInstall(ctx)) { needPermission = true; return }
         state = "downloading"; progress = 0
         Thread {
             try {
                 val f = Updater.download(ctx, rel) { p -> progress = p }
                 state = "done"
-                Updater.install(ctx, f)
+                val err = Updater.install(ctx, f)
+                if (err != null) { error = err; state = "failed" }
+                else if (!Updater.canInstall(ctx)) needPermission = true   // التلفاز: قد يحتاج الإذن قبل أن يقبل المثبّت
             } catch (e: Exception) {
                 error = e.message ?: e.javaClass.simpleName
                 state = "failed"
             }
         }.start()
     }
+    fun installAgain() {
+        val r = release ?: return
+        val f = java.io.File(ctx.cacheDir, "updates/JifcoCast-${r.version}.apk")
+        if (!f.exists()) { startDownload(); return }
+        val err = Updater.install(ctx, f)
+        if (err != null) { error = err; state = "failed" }
+    }
 
     when {
         needPermission -> AlertDialog(
             onDismissRequest = { needPermission = false },
             title = { Text("إذن التثبيت") },
-            text = { Text("يحتاج النظام موافقتك مرة واحدة على السماح لـ Jifco Cast بتثبيت التحديثات. افتح الإعداد، فعّل «السماح من هذا المصدر»، ثم ارجع واضغط «تحديث الآن».") },
-            confirmButton = { Button(onClick = { needPermission = false; Updater.openInstallPermission(ctx) }) { Text("فتح الإعداد") } },
-            dismissButton = { TextButton(onClick = { needPermission = false }) { Text("إلغاء") } }
+            text = { Text("إن لم يظهر مثبّت النظام أو رفض: يحتاج الجهاز موافقتك مرة واحدة على السماح لـ Jifco Cast بتثبيت التطبيقات. اضغط «فتح الإعداد»، فعّل «السماح من هذا المصدر» (في بعض الأجهزة: الأمان ← التطبيقات غير المعروفة ← Jifco Cast)، ثم ارجع واضغط «تثبيت».") },
+            confirmButton = { Button(onClick = { val err = Updater.openInstallPermission(ctx); if (err != null) { error = err; state = "failed" }; needPermission = false }) { Text("فتح الإعداد") } },
+            dismissButton = { TextButton(onClick = { needPermission = false; installAgain() }) { Text("تثبيت") } }
         )
         state == "offer" -> AlertDialog(
             onDismissRequest = { },
@@ -220,9 +228,14 @@ fun UpdateDialogs(autoCheck: Boolean, onDone: () -> Unit = {}) {
         state == "done" -> AlertDialog(
             onDismissRequest = { state = "none"; onDone() },
             title = { Text("اكتمل التنزيل") },
-            text = { Text("اتبع مثبّت النظام لإتمام التحديث. إن لم يظهر، اضغط «تثبيت».") },
-            confirmButton = { Button(onClick = { release?.let { r -> java.io.File(ctx.cacheDir, "updates/JifcoCast-${r.version}.apk").takeIf { it.exists() }?.let { Updater.install(ctx, it) } } }) { Text("تثبيت") } },
-            dismissButton = { TextButton(onClick = { state = "none"; onDone() }) { Text("إغلاق") } }
+            text = { Text("اتبع مثبّت النظام لإتمام التحديث. إن لم يظهر أو رفض، اضغط «تثبيت» مرة أخرى، أو «الإذن» لفتح إعداد السماح بالتثبيت.") },
+            confirmButton = { Button(onClick = { installAgain() }) { Text("تثبيت") } },
+            dismissButton = {
+                androidx.compose.foundation.layout.Row {
+                    TextButton(onClick = { needPermission = true }) { Text("الإذن") }
+                    TextButton(onClick = { state = "none"; onDone() }) { Text("إغلاق") }
+                }
+            }
         )
         !autoCheck && state == "none" -> AlertDialog(
             onDismissRequest = { onDone() },
