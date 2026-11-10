@@ -3,7 +3,7 @@
 Jifco Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.4.3"
+VERSION = "0.4.4"
 APP_NAME = "Jifco Cast"
 
 import json
@@ -401,7 +401,7 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title(f"{APP_NAME} - Sender — النسخة {VERSION}")
-        root.geometry("680x500")
+        root.geometry("700x560")
         root.resizable(False, False)
         root.configure(bg=SCREEN_BG)
         self.receivers = {}   # key -> (name, host, port)
@@ -421,6 +421,12 @@ class App:
         f.pack(fill="both", expand=True)
 
         head = ttk.Frame(f, style="Card.TFrame"); head.pack(fill="x")
+        # الشعار في الركن العلوي
+        try:
+            self.logo_img = tk.PhotoImage(file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png"))
+            ttk.Label(head, image=self.logo_img, style="Card.TLabel").pack(side="right", padx=(0, 10))
+        except Exception:
+            pass
         ttk.Label(head, text="Ready to Send", style="Title.TLabel").pack(side="right")
         ttk.Button(head, text="خروج", command=self.on_close).pack(side="left")
 

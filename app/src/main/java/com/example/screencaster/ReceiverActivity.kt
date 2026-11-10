@@ -39,6 +39,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
     private var streaming = false
     private lateinit var backButton: Button
     private lateinit var pinButton: Button
+    private lateinit var logoView: android.widget.ImageView
     private lateinit var idleBg: View
     private lateinit var modeText: TextView
 
@@ -116,7 +117,14 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
             setTextColor(Color.BLACK)
             setPadding(40, 20, 40, 20)
         }
-        root.addView(pinButton, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START).apply { setMargins(60, 60, 60, 60) })
+        root.addView(pinButton, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END).apply { setMargins(60, 60, 60, 60) })
+
+        // الشعار في الركن العلوي الأول من شاشة الانتظار
+        logoView = android.widget.ImageView(this).apply {
+            setImageResource(R.drawable.logo)
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        }
+        root.addView(logoView, FrameLayout.LayoutParams(220, 220, Gravity.TOP or Gravity.START).apply { setMargins(70, 70, 0, 0) })
 
         setContentView(root)
         textureView.surfaceTextureListener = this
@@ -129,13 +137,14 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
             "الجهاز: ${Build.MANUFACTURER} ${Build.MODEL}\n" +
             "العنوان: ${NetUtils.localIpv4() ?: "غير معروف"} : $port\n\n" +
             "افتح «Jifco Cast - Sender» على الجوال أو الحاسب واضغط «ابحث عن المستقبلات»\n" +
-            "محمي بكلمة سر" + (if (PinStore.receiverPin(this) == Protocol.DEFAULT_PIN) " (الافتراضية 1234 — غيّرها من الزر أعلى اليسار)" else "") + "\n\n" +
+            "محمي بكلمة سر" + (if (PinStore.receiverPin(this) == Protocol.DEFAULT_PIN) " (الافتراضية 1234 — غيّرها من زر «تغيير كلمة السر» أسفل الشاشة)" else "") + "\n\n" +
             "النسخة ${Protocol.VERSION}\n\nأثناء البث: أزرار ◀ ▶ في الريموت تبدّل وضع العرض (ملاءمة / ملء / تمديد)"
         idleBg.visibility = View.VISIBLE
         statusText.visibility = View.VISIBLE
         logText.visibility = View.VISIBLE
         backButton.visibility = View.VISIBLE
         pinButton.visibility = View.VISIBLE
+        logoView.visibility = View.VISIBLE
         streaming = false
         // إخفاء طبقة الفيديو وإجبار الشاشة على إعادة الرسم فوراً (بعض الأجهزة لا تعيد الرسم إلا بحدث)
         textureView.alpha = 0f
@@ -144,6 +153,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         logText.bringToFront()
         backButton.bringToFront()
         pinButton.bringToFront()
+        logoView.bringToFront()
         statusText.invalidate()
         window.decorView.postInvalidate()
         main.postDelayed({ statusText.invalidate(); window.decorView.postInvalidate() }, 300)
@@ -283,6 +293,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
                         logText.visibility = View.GONE
                         backButton.visibility = View.GONE
                         pinButton.visibility = View.GONE
+                        logoView.visibility = View.GONE
                         fitSurface(peer.width, peer.height)
                     }
                     log("بدأ البث من ${peer.name}")

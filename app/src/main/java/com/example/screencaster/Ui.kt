@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +52,16 @@ val ScreenBg = Color(0xFF0F1F3D)      // خلفية الشاشة (كحلي غا�
 val FrameBg = Color(0xFFF6F3EA)       // داخل البرواز (فاتح)
 val FrameBorder = Color(0xFFC9A227)   // حد البرواز (ذهبي)
 
+/** شعار المستخدم — يظهر في الركن العلوي من كل شاشة. */
+@Composable
+fun Logo(size: androidx.compose.ui.unit.Dp = 56.dp) {
+    Image(
+        painter = painterResource(R.drawable.logo),
+        contentDescription = "الشعار",
+        modifier = Modifier.size(size).clip(RoundedCornerShape(12.dp))
+    )
+}
+
 /**
  * برواز موحّد لكل الشاشات: خلفية كحلية، وداخلها إطار فاتح بحدّ ذهبي يحوي العنوان وزر «الرئيسية» والمحتوى ورقم النسخة.
  * onHome = null في الشاشة الرئيسة نفسها.
@@ -63,6 +78,8 @@ fun FramedScreen(title: String, onHome: (() -> Unit)?, content: @Composable () -
         ) {
             if (title.isNotBlank() || onHome != null) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Logo()
+                    Spacer(Modifier.width(10.dp))
                     Text(title, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.weight(1f))
                     if (onHome != null) TvButton("الرئيسية", outlined = true, fontSize = 14.sp, onClick = onHome)
                 }

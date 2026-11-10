@@ -117,7 +117,8 @@ fun RoleScreen(
     )
     FramedScreen(title = "", onHome = null) {
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-    // زر الإعدادات في الركن العلوي
+    // الشعار في الركن العلوي الأول، وزر الإعدادات في الركن المقابل
+    androidx.compose.foundation.layout.Box(Modifier.align(Alignment.TopStart)) { Logo(72.dp) }
     androidx.compose.foundation.layout.Box(Modifier.align(Alignment.TopEnd)) {
         TvButton("⚙ الإعدادات", outlined = true, fontSize = 14.sp) { showSettings = true }
     }
