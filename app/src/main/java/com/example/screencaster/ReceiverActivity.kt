@@ -188,7 +188,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
             .show()
     }
 
-    private fun modeLabel(m: String) = when (m) { "fill" -> "ملء الشاشة (قصّ الأطراف)"; "stretch" -> "تمديد"; else -> "ملاءمة" }
+    private fun modeLabel(m: String) = when (m) { "fill" -> "ملء الشاشة (قصّ الأطراف)"; "filltop" -> "ملء من الأعلى (يبدأ من أول الصفحة)"; "stretch" -> "تمديد"; else -> "ملاءمة" }
 
     private fun showModeHint() {
         modeText.text = "وضع العرض: ${modeLabel(mode)}"
@@ -221,7 +221,7 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
     }
 
     private fun cycleMode(forward: Boolean) {
-        val order = listOf("fit", "fill", "stretch")
+        val order = listOf("fit", "fill", "filltop", "stretch")
         val i = order.indexOf(mode).coerceAtLeast(0)
         mode = order[(i + (if (forward) 1 else order.size - 1)) % order.size]
         fitSurface(videoW, videoH)
@@ -345,11 +345,14 @@ class ReceiverActivity : Activity(), TextureView.SurfaceTextureListener {
         val sh = textureView.height.toFloat().takeIf { it > 0 } ?: resources.displayMetrics.heightPixels.toFloat()
         val m = Matrix()
         if (mode != "stretch") {
-            val scale = if (mode == "fill") maxOf(sw / vw, sh / vh) else minOf(sw / vw, sh / vh)
+            val fill = mode == "fill" || mode == "filltop"
+            val scale = if (fill) maxOf(sw / vw, sh / vh) else minOf(sw / vw, sh / vh)
             val w = vw * scale
             val h = vh * scale
             m.setScale(w / sw, h / sh)
-            m.postTranslate((sw - w) / 2f, (sh - h) / 2f)
+            // «ملء من الأعلى»: يبقى أول الصفحة ظاهراً ويُقصّ من الأسفل فقط (والعرض يتوسّط)
+            val dy = if (mode == "filltop") minOf(0f, (sh - h)) * 0f else (sh - h) / 2f
+            m.postTranslate((sw - w) / 2f, dy)
         }
         textureView.setTransform(m)
         textureView.invalidate()

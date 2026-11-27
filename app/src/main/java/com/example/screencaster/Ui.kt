@@ -226,6 +226,7 @@ fun CastStatusCard(onStop: () -> Unit, onMode: ((String) -> Unit)? = null, onAud
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { onMode("fit") }) { Text("ملاءمة") }
                     OutlinedButton(onClick = { onMode("fill") }) { Text("ملء") }
+                    OutlinedButton(onClick = { onMode("filltop") }) { Text("ملء من الأعلى") }
                     OutlinedButton(onClick = { onMode("stretch") }) { Text("تمديد") }
                 }
                 Text("اقلب الجهاز أفقياً لتملأ الصورة الشاشة", fontSize = 11.sp)

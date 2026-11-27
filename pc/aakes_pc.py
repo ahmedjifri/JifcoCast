@@ -3,7 +3,7 @@
 Jifrico Cast للحاسب — مرسل ويندوز يكلّم مستقبل «عاكس» (أندرويد) بنفس البروتوكول.
 يلتقط الشاشة، يشفّرها إتش ٢٦٤، يرسل الصوت الخارج من السماعة، ويعرض نافذة تحكم بسيطة.
 """
-VERSION = "0.4.6"
+VERSION = "0.4.7"
 APP_NAME = "Jifrico Cast"
 
 import json
@@ -474,7 +474,7 @@ class App:
         self.stop_btn.pack(side="right", padx=2)
         ttk.Label(row3, text="وضع العرض:", style="Card.TLabel").pack(side="right", padx=(16, 4))
         self.mode_btns = []
-        for label, mode in (("ملاءمة", "fit"), ("ملء", "fill"), ("تمديد", "stretch")):
+        for label, mode in (("ملاءمة", "fit"), ("ملء", "fill"), ("ملء من الأعلى", "filltop"), ("تمديد", "stretch")):
             b = ttk.Button(row3, text=label, command=lambda m=mode: self.set_mode(m), state="disabled")
             b.pack(side="right", padx=1)
             self.mode_btns.append(b)
