@@ -34,10 +34,10 @@ jobs:
           keyPassword=${{ secrets.KEY_PASSWORD }}
           EOT
 
-      - name: Build
+      - name: Build (retries once if a repository was unreachable)
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleRelease
+          ./gradlew --no-daemon :app:assembleRelease || (sleep 60 && ./gradlew --no-daemon :app:assembleRelease)
 
       - name: Rename APK and read version
         id: ver
